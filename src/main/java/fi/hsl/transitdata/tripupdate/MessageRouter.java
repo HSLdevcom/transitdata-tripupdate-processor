@@ -27,8 +27,8 @@ public class MessageRouter implements IMessageHandler {
     }
 
     private void registerHandlers(PulsarApplicationContext context) {
-        processors.put(ProtobufSchema.PubtransRoiArrival, new MessageProcessor(context.getJedis(), StopEvent.EventType.Arrival));
-        processors.put(ProtobufSchema.PubtransRoiDeparture, new MessageProcessor(context.getJedis(), StopEvent.EventType.Departure));
+        processors.put(ProtobufSchema.PubtransRoiArrival, new ArrivalProcessor(context.getJedis());
+        processors.put(ProtobufSchema.PubtransRoiDeparture, new DepartureProcessor(context.getJedis()));
     }
 
     public void handleMessage(Message received) throws Exception {
