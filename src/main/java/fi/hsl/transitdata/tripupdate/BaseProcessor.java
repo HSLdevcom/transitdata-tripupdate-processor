@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import org.apache.pulsar.client.api.Message;
@@ -13,6 +14,8 @@ public abstract class BaseProcessor implements IMessageProcessor {
 
     private Jedis jedis;
     StopEvent.EventType eventType;
+
+    //private static final String REDIS_PREFIX_STOP_EVENT = "stopev:";
 
     public BaseProcessor(Jedis jedis, StopEvent.EventType eventType) {
         this.jedis = jedis;
@@ -31,15 +34,24 @@ public abstract class BaseProcessor implements IMessageProcessor {
         try {
             PubtransTableProtos.ROIBase base = parseBaseFromMessage(msg);
             //1 Create stop event
+
             StopEvent stop = createStopEvent(base, this.eventType);
 
             //2 create stop time update event from that
+            GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate = null;//TODO READ old from cache
+            GtfsRealtime.TripUpdate.StopTimeUpdate newUpdate = createStopTimeUpdate(stop, previousUpdate);
+            //TODO Put to cache
+
         }
         catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse ROIArrival from message payload", e);
         }
 
     }
+    /*
+    private String cacheKey(Message msg) {
+        return REDIS_PREFIX_STOP_EVENT + msg.getKey();
+    }*/
 
     @Override
     public boolean validateMessage(Message msg) {
@@ -106,4 +118,41 @@ public abstract class BaseProcessor implements IMessageProcessor {
             log.error(e.getLocalizedMessage());
         }
     }*/
+
+
+    private GtfsRealtime.TripUpdate.StopTimeUpdate createStopTimeUpdate(StopEvent stopEvent, GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
+
+        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
+        if (previousUpdate != null) {
+            stopTimeUpdateBuilder = previousUpdate.toBuilder();
+        }
+        else {
+            stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                    .setStopId(String.valueOf(stopEvent.stop_id))
+                    .setStopSequence(stopEvent.stop_seq);
+        }
+
+        switch (stopEvent.schedule_relationship) {
+            case Skipped:
+                stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
+                break;
+            case Scheduled:
+                stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+                break;
+        }
+
+        GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setTime(stopEvent.target_time)
+                .build();
+        switch (stopEvent.event_type) {
+            case Arrival:
+                stopTimeUpdateBuilder.setArrival(stopTimeEvent);
+                break;
+            case Departure:
+                stopTimeUpdateBuilder.setDeparture(stopTimeEvent);
+                break;
+        }
+
+        return stopTimeUpdateBuilder.build();
+    }
 }
