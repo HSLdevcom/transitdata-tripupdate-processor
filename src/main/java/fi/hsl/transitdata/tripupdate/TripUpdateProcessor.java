@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.pulsar.IMessageHandler;
+import fi.hsl.common.transitdata.TransitdataUtils;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +59,11 @@ public class TripUpdateProcessor {
             GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(messageKey);
             if (tripUpdate != null) {
                 //TODO Should we create the feed message as separate pulsar pipeline step?
-                GtfsRealtime.FeedMessage feedMessage = createFeedMessage(tripUpdate);
+                long timestamp = TransitdataUtils.currentMessageTimestamp();
+                GtfsRealtime.FeedMessage feedMessage = createFeedMessage(tripUpdate, timestamp);
                 producer.newMessage()
                         .key(messageKey)
-                        .eventTime(18000L) //TODO FIX
+                        .eventTime(timestamp)
                         .value(feedMessage.toByteArray())
                         .sendAsync()
                         //.thenCompose((msg) -> consumer.acknowledgeAsync(inMsg))
@@ -88,12 +90,12 @@ public class TripUpdateProcessor {
 
     }
 
-    private GtfsRealtime.FeedMessage createFeedMessage(GtfsRealtime.TripUpdate tripUpdate) {
+    private GtfsRealtime.FeedMessage createFeedMessage(GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
 
         GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0")
                 .setIncrementality(GtfsRealtime.FeedHeader.Incrementality.DIFFERENTIAL)
-                .setTimestamp(System.currentTimeMillis())
+                .setTimestamp(timestamp)
                 .build();
 
         GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
