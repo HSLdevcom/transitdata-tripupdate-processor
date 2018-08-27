@@ -17,9 +17,12 @@ public abstract class BaseProcessor implements IMessageProcessor {
 
     //private static final String REDIS_PREFIX_STOP_EVENT = "stopev:";
 
-    public BaseProcessor(Jedis jedis, StopEvent.EventType eventType) {
+    TripUpdateProcessor tripProcessor = null;
+
+    public BaseProcessor(Jedis jedis, StopEvent.EventType eventType, TripUpdateProcessor tripProcessor) {
         this.jedis = jedis;
         this.eventType = eventType;
+        this.tripProcessor = tripProcessor;
     }
 
     protected abstract PubtransTableProtos.ROIBase parseBaseFromMessage(Message msg) throws InvalidProtocolBufferException;
@@ -42,6 +45,8 @@ public abstract class BaseProcessor implements IMessageProcessor {
             GtfsRealtime.TripUpdate.StopTimeUpdate newUpdate = createStopTimeUpdate(stop, previousUpdate);
             //TODO Put to cache
 
+            //3 Create TripUpdate and send it out
+            tripProcessor.processStopTimeUpdate(msg.getKey(), newUpdate);
         }
         catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse ROIArrival from message payload", e);

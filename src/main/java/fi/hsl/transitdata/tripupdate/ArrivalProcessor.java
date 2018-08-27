@@ -7,8 +7,8 @@ import redis.clients.jedis.Jedis;
 
 public class ArrivalProcessor extends BaseProcessor {
 
-    public ArrivalProcessor(Jedis jedis) {
-        super(jedis, StopEvent.EventType.Arrival);
+    public ArrivalProcessor(Jedis jedis, TripUpdateProcessor processor) {
+        super(jedis, StopEvent.EventType.Arrival, processor);
     }
 
     protected PubtransTableProtos.ROIBase parseBaseFromMessage(Message msg) throws InvalidProtocolBufferException {
