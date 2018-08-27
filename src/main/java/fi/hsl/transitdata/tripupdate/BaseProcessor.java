@@ -1,5 +1,7 @@
 package fi.hsl.transitdata.tripupdate;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -9,13 +11,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
+import java.util.concurrent.TimeUnit;
+
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
 
     private Jedis jedis;
     StopEvent.EventType eventType;
 
-    //private static final String REDIS_PREFIX_STOP_EVENT = "stopev:";
+    private final Cache<String, GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeCache;
 
     TripUpdateProcessor tripProcessor = null;
 
@@ -23,6 +27,10 @@ public abstract class BaseProcessor implements IMessageProcessor {
         this.jedis = jedis;
         this.eventType = eventType;
         this.tripProcessor = tripProcessor;
+
+        this.stopTimeCache = CacheBuilder.newBuilder()
+                .expireAfterAccess(4, TimeUnit.HOURS)
+                .build();
     }
 
     protected abstract PubtransTableProtos.ROIBase parseBaseFromMessage(Message msg) throws InvalidProtocolBufferException;
@@ -36,16 +44,17 @@ public abstract class BaseProcessor implements IMessageProcessor {
     public void processMessage(Message msg) {
         try {
             PubtransTableProtos.ROIBase base = parseBaseFromMessage(msg);
-            //1 Create stop event
-
+            // Create stop event
             StopEvent stop = createStopEvent(base, this.eventType);
 
-            //2 create stop time update event from that
-            GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate = null;//TODO READ old from cache
-            GtfsRealtime.TripUpdate.StopTimeUpdate newUpdate = createStopTimeUpdate(stop, previousUpdate);
-            //TODO Put to cache
+            // Create stop time update event from that and store so we can later add the whole list to TripUpdate
+            String key = msg.getKey();
 
-            //3 Create TripUpdate and send it out
+            GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate = stopTimeCache.getIfPresent(key);
+            GtfsRealtime.TripUpdate.StopTimeUpdate newUpdate = createStopTimeUpdate(stop, previousUpdate);
+            stopTimeCache.put(key, newUpdate);
+
+            // Create TripUpdate and send it out
             tripProcessor.processStopTimeUpdate(msg.getKey(), newUpdate);
         }
         catch (InvalidProtocolBufferException e) {
@@ -53,10 +62,6 @@ public abstract class BaseProcessor implements IMessageProcessor {
         }
 
     }
-    /*
-    private String cacheKey(Message msg) {
-        return REDIS_PREFIX_STOP_EVENT + msg.getKey();
-    }*/
 
     @Override
     public boolean validateMessage(Message msg) {
@@ -102,28 +107,6 @@ public abstract class BaseProcessor implements IMessageProcessor {
 
         return event;
     }
-
-    /*
-    public void stopTimeUpdate(Message received) throws Exception {
-        try {
-            PulsarMessageProtos.StopEvent stopEvent = PulsarMessageProtos.StopEvent.parseFrom(received.getData());
-
-            GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate = updateStopTimeUpdate(stopTimeUpdates.get(received.getKey()), stopEvent);
-            stopTimeUpdates.put(received.getKey(), stopTimeUpdate);
-
-            producer.newMessage()
-                    .key(String.valueOf(stopEvent.getDatedVehicleJourneyId()))
-                    .eventTime(18000l)
-                    .value(stopTimeUpdate.toByteArray())
-                    .sendAsync()
-                    .thenCompose((id) -> consumer.acknowledgeAsync(received))
-                    .thenRun(() -> log.info("Messages sent: " + this.msgCount.getAndIncrement() + ". Cache size: " + this.stopTimeUpdates.size() + " dvj: " + String.valueOf(stopEvent.getDatedVehicleJourneyId())));
-
-        } catch (InvalidProtocolBufferException e) {
-            log.error(e.getLocalizedMessage());
-        }
-    }*/
-
 
     private GtfsRealtime.TripUpdate.StopTimeUpdate createStopTimeUpdate(StopEvent stopEvent, GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
 

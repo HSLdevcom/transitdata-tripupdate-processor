@@ -3,9 +3,7 @@ package fi.hsl.transitdata.tripupdate;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.transitdata.TransitdataUtils;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
@@ -13,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -100,7 +97,7 @@ public class TripUpdateProcessor {
 
         GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
                 .setTripUpdate(tripUpdate)
-                .setId("test")
+                .setId("test") //TODO fix?
                 .build();
 
         return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();
