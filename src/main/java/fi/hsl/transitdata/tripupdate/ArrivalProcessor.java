@@ -11,9 +11,9 @@ public class ArrivalProcessor extends BaseProcessor {
         super(jedis, StopEvent.EventType.Arrival, processor);
     }
 
-    protected PubtransTableProtos.ROIBase parseBaseFromMessage(Message msg) throws InvalidProtocolBufferException {
+    protected PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException {
         PubtransTableProtos.ROIArrival roiMessage = PubtransTableProtos.ROIArrival.parseFrom(msg.getData());
-        return roiMessage.getBase();
+        return roiMessage.getCommon();
     }
 
 }

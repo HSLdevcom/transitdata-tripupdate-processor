@@ -11,9 +11,9 @@ public class DepartureProcessor extends BaseProcessor {
         super(jedis, StopEvent.EventType.Departure, processor);
     }
 
-    protected PubtransTableProtos.ROIBase parseBaseFromMessage(Message msg) throws InvalidProtocolBufferException {
+    protected PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException {
         PubtransTableProtos.ROIDeparture roiMessage = PubtransTableProtos.ROIDeparture.parseFrom(msg.getData());
-        return roiMessage.getBase();
+        return roiMessage.getCommon();
     }
 
 }
