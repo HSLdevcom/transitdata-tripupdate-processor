@@ -22,6 +22,7 @@ public class TripUpdateProcessor {
     private Jedis jedis;
     private Producer<byte[]> producer;
 
+    //for each JourneyId stores a list of StopTimeUpdates per StopSequence-ID
     private final LoadingCache<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>> stopTimeUpdateLists;
     private final LoadingCache<String, GtfsRealtime.TripUpdate> tripUpdates;
 
@@ -49,22 +50,22 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public void processStopTimeUpdate(final String messageKey, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
+    public void processStopEvent(final String messageKey, StopEvent stopEvent) {
         try {
-            updateStopTimeUpdateLists(stopTimeUpdate, messageKey);
+            updateStopTimeUpdateLists(stopEvent, messageKey);
 
             GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(messageKey);
             if (tripUpdate != null) {
-                //TODO Should we create the feed message as separate pulsar pipeline step?
+
                 long timestamp = TransitdataUtils.currentMessageTimestamp();
-                GtfsRealtime.FeedMessage feedMessage = createFeedMessage(tripUpdate, timestamp);
+                GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(tripUpdate, timestamp);
                 producer.newMessage()
                         .key(messageKey)
                         .eventTime(timestamp)
                         .value(feedMessage.toByteArray())
                         .sendAsync()
                         //.thenCompose((msg) -> consumer.acknowledgeAsync(inMsg))
-                        .thenRun(() -> log.info("stop id: " + stopTimeUpdate.getStopId() + " n of TripUpdates in memory: " + tripUpdates.size()));
+                        .thenRun(() -> log.info("stop id: " + stopEvent.stop_id + " n of TripUpdates in memory: " + tripUpdates.size()));
             }
             else {
                 log.warn("Cannot create FeedMessage, trip update is null");
@@ -75,32 +76,19 @@ public class TripUpdateProcessor {
 
     }
 
-    private void updateStopTimeUpdateLists(GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datedVehicleJourneyId) {
-
+    private void updateStopTimeUpdateLists(StopEvent stopEvent, String datedVehicleJourneyId) {
         try {
-            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = stopTimeUpdateLists.get(datedVehicleJourneyId);
-            stopTimeUpdates.put(stopTimeUpdate.getStopSequence(), stopTimeUpdate);
-            stopTimeUpdateLists.put(datedVehicleJourneyId, stopTimeUpdates);
+            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = stopTimeUpdateLists.get(datedVehicleJourneyId);
+
+            final int cacheKey = stopEvent.stop_seq;
+            GtfsRealtime.TripUpdate.StopTimeUpdate previous = updatesForThisJourney.get(cacheKey);
+            GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
+            updatesForThisJourney.put(cacheKey, latest);
+
+            stopTimeUpdateLists.put(datedVehicleJourneyId, updatesForThisJourney);
         } catch (Exception e) {
             log.error("Failed to update StopTimeUpdateList", e);
         }
-
-    }
-
-    private GtfsRealtime.FeedMessage createFeedMessage(GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
-
-        GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
-                .setGtfsRealtimeVersion("2.0")
-                .setIncrementality(GtfsRealtime.FeedHeader.Incrementality.DIFFERENTIAL)
-                .setTimestamp(timestamp)
-                .build();
-
-        GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
-                .setTripUpdate(tripUpdate)
-                .setId("test") //TODO fix?
-                .build();
-
-        return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();
     }
 
     private GtfsRealtime.TripUpdate updateTripUpdates(String datedVehicleJourneyId) {
