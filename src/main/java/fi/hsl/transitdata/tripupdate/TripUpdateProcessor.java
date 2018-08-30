@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.transitdata.TransitdataUtils;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,14 +57,13 @@ public class TripUpdateProcessor {
             GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(messageKey);
             if (tripUpdate != null) {
 
-                long timestamp = TransitdataUtils.currentMessageTimestamp();
+                long timestamp = TransitdataProperties.currentTimestamp();
                 GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(tripUpdate, timestamp);
                 producer.newMessage()
                         .key(messageKey)
                         .eventTime(timestamp)
                         .value(feedMessage.toByteArray())
                         .sendAsync()
-                        //.thenCompose((msg) -> consumer.acknowledgeAsync(inMsg))
                         .thenRun(() -> log.info("stop id: " + stopEvent.stop_id + " n of TripUpdates in memory: " + tripUpdates.size()));
             }
             else {
@@ -110,7 +109,7 @@ public class TripUpdateProcessor {
 
     private GtfsRealtime.TripUpdate initializeNewTripUpdate(String datedVehicleJourneyId) throws IllegalArgumentException {
 
-        Map<String, String> journeyInfo = jedis.hgetAll("dvj:" + datedVehicleJourneyId);
+        Map<String, String> journeyInfo = jedis.hgetAll(TransitdataProperties.REDIS_PREFIX_DVJ + datedVehicleJourneyId);
         //TODO check this, does the CacheLoader propagate the exception or just swallow it?
         if (journeyInfo.get("route-name") == null || journeyInfo.get("direction") == null || journeyInfo.get("start-time") == null || journeyInfo.get("operating-day") == null) {
             throw new IllegalArgumentException("No journey data found for DatedVehicleJourneyId " + datedVehicleJourneyId);
