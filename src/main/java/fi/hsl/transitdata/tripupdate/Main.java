@@ -1,7 +1,7 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.typesafe.config.Config;
-import fi.hsl.common.ConfigParser;
+import fi.hsl.common.config.ConfigParser;
 import fi.hsl.common.pulsar.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

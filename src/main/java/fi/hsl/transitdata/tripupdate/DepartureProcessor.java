@@ -5,14 +5,14 @@ import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import org.apache.pulsar.client.api.Message;
 import redis.clients.jedis.Jedis;
 
-public class ArrivalProcessor extends BaseProcessor {
+public class DepartureProcessor extends BaseProcessor {
 
-    public ArrivalProcessor(Jedis jedis, TripUpdateProcessor processor) {
-        super(jedis, StopEvent.EventType.Arrival, processor);
+    public DepartureProcessor(Jedis jedis, TripUpdateProcessor processor) {
+        super(jedis, StopEvent.EventType.Departure, processor);
     }
 
     protected PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException {
-        PubtransTableProtos.ROIArrival roiMessage = PubtransTableProtos.ROIArrival.parseFrom(msg.getData());
+        PubtransTableProtos.ROIDeparture roiMessage = PubtransTableProtos.ROIDeparture.parseFrom(msg.getData());
         return roiMessage.getCommon();
     }
 
