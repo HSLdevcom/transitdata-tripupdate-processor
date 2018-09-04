@@ -1,5 +1,6 @@
 package fi.hsl.transitdata.tripupdate;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -8,7 +9,6 @@ import fi.hsl.common.transitdata.TransitdataProperties;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 import java.util.Collection;
 import java.util.Map;
@@ -19,113 +19,83 @@ public class TripUpdateProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(TripUpdateProcessor.class);
 
-    private Jedis jedis;
     private Producer<byte[]> producer;
 
     //for each JourneyId stores a list of StopTimeUpdates per StopSequence-ID
     private final LoadingCache<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>> stopTimeUpdateLists;
-    private final LoadingCache<String, GtfsRealtime.TripUpdate> tripUpdates;
+    private final Cache<String, GtfsRealtime.TripUpdate> tripUpdates;
 
-    public TripUpdateProcessor(Producer<byte[]> producer, Jedis jedis) {
+    public TripUpdateProcessor(Producer<byte[]> producer) {
         this.producer = producer;
-        this.jedis = jedis;
 
         this.tripUpdates = CacheBuilder.newBuilder()
                 .expireAfterAccess(4, TimeUnit.HOURS)
-                .build(new CacheLoader<String, GtfsRealtime.TripUpdate>() {
-                    @Override
-                    public GtfsRealtime.TripUpdate load(String s) throws Exception {
-                        return initializeNewTripUpdate(s);
-                    }
-                });
+                .build();
 
         this.stopTimeUpdateLists = CacheBuilder.newBuilder()
                 .expireAfterAccess(4, TimeUnit.HOURS)
                 .build(new CacheLoader<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>>() {
                     @Override
                     public Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> load(String s) {
-                        //TreeMap keeps its entries sorted according to the natural ordering of its keys.
-                        return new TreeMap<>();
+                    //TreeMap keeps its entries sorted according to the natural ordering of its keys.
+                    return new TreeMap<>();
                     }
                 });
     }
 
-    public void processStopEvent(final String messageKey, StopEvent stopEvent) {
+    public void processStopEvent(final String key, StopEvent stopEvent) {
         try {
-            updateStopTimeUpdateLists(stopEvent, messageKey);
+            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> stops = updateStopTimeUpdateLists(key, stopEvent);
 
-            GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(messageKey);
-            if (tripUpdate != null) {
+            GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(key, stopEvent, stops);
 
-                long timestamp = TransitdataProperties.currentTimestamp();
-                GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(tripUpdate, timestamp);
-                producer.newMessage()
-                        .key(messageKey)
-                        .eventTime(timestamp)
-                        .value(feedMessage.toByteArray())
-                        .sendAsync()
-                        .thenRun(() -> log.info("stop id: " + stopEvent.stop_id + " n of TripUpdates in memory: " + tripUpdates.size()));
-            }
-            else {
-                log.warn("Cannot create FeedMessage, trip update is null");
-            }
+            long timestamp = TransitdataProperties.currentTimestamp();
+            GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(tripUpdate, timestamp);
+            producer.newMessage()
+                    .key(key)
+                    .eventTime(timestamp)
+                    .value(feedMessage.toByteArray())
+                    .sendAsync()
+                    .thenRun(() -> log.info("stop id: " + stopEvent.stop_id + " n of TripUpdates in memory: " + tripUpdates.size()));
+
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
 
     }
 
-    private void updateStopTimeUpdateLists(StopEvent stopEvent, String datedVehicleJourneyId) {
-        try {
-            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = stopTimeUpdateLists.get(datedVehicleJourneyId);
+    private Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updateStopTimeUpdateLists
+                            (final String datedVehicleJourneyId, final StopEvent stopEvent) throws Exception {
 
-            final int cacheKey = stopEvent.stop_seq;
-            GtfsRealtime.TripUpdate.StopTimeUpdate previous = updatesForThisJourney.get(cacheKey);
-            GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
-            updatesForThisJourney.put(cacheKey, latest);
+        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = stopTimeUpdateLists.get(datedVehicleJourneyId);
 
-            stopTimeUpdateLists.put(datedVehicleJourneyId, updatesForThisJourney);
-        } catch (Exception e) {
-            log.error("Failed to update StopTimeUpdateList", e);
-        }
+        final int cacheKey = stopEvent.stop_seq;
+        GtfsRealtime.TripUpdate.StopTimeUpdate previous = updatesForThisJourney.get(cacheKey);
+        GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
+        updatesForThisJourney.put(cacheKey, latest);
+
+        stopTimeUpdateLists.put(datedVehicleJourneyId, updatesForThisJourney);
+        return updatesForThisJourney;
     }
 
-    private GtfsRealtime.TripUpdate updateTripUpdates(String datedVehicleJourneyId) {
-        GtfsRealtime.TripUpdate tripUpdate = null;
-        try {
-            Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = stopTimeUpdateLists.get(datedVehicleJourneyId).values();
-            tripUpdate = tripUpdates.get(datedVehicleJourneyId).toBuilder()
-                    .clearStopTimeUpdate()
-                    .addAllStopTimeUpdate(updates)
-                    .build();
+    private GtfsRealtime.TripUpdate updateTripUpdates(final String datedVehicleJourneyId,
+                                                      final StopEvent latest, Map<Integer,
+        GtfsRealtime.TripUpdate.StopTimeUpdate> updatesPerStop) {
 
-            tripUpdates.put(datedVehicleJourneyId, tripUpdate);
-
-        } catch (Exception e) {
-            log.error("Failed to update trip updates", e);
-        }
-        return tripUpdate;
-    }
-
-    private GtfsRealtime.TripUpdate initializeNewTripUpdate(String datedVehicleJourneyId) throws IllegalArgumentException {
-
-        Map<String, String> journeyInfo = jedis.hgetAll(TransitdataProperties.REDIS_PREFIX_DVJ + datedVehicleJourneyId);
-        //TODO check this, does the CacheLoader propagate the exception or just swallow it?
-        if (journeyInfo.get("route-name") == null || journeyInfo.get("direction") == null || journeyInfo.get("start-time") == null || journeyInfo.get("operating-day") == null) {
-            throw new IllegalArgumentException("No journey data found for DatedVehicleJourneyId " + datedVehicleJourneyId);
+        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = updatesPerStop.values();
+        GtfsRealtime.TripUpdate previousUpdate = tripUpdates.getIfPresent(datedVehicleJourneyId);
+        if (previousUpdate == null) {
+            previousUpdate = GtfsFactory.newTripUpdate(latest);
         }
 
-        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(journeyInfo.get("route-name"))
-                .setDirectionId(Integer.parseInt(journeyInfo.get("direction")))
-                .setStartDate(journeyInfo.get("operating-day"))
-                .setStartTime(journeyInfo.get("start-time"))
+        GtfsRealtime.TripUpdate tripUpdate = previousUpdate.toBuilder()
+                .clearStopTimeUpdate()
+                .addAllStopTimeUpdate(updates)
                 .build();
 
-        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(tripDescriptor);
+        tripUpdates.put(datedVehicleJourneyId, tripUpdate);
 
-        return tripUpdateBuilder.build();
+        return tripUpdate;
     }
 
 }

@@ -61,4 +61,21 @@ public class GtfsFactory {
 
         return stopTimeUpdateBuilder.build();
     }
+
+
+    public static GtfsRealtime.TripUpdate newTripUpdate(StopEvent event) {
+
+        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId(event.routeData.route_name)
+                .setDirectionId(event.routeData.direction)
+                .setStartDate(event.routeData.operating_day)
+                .setStartTime(event.routeData.start_time)
+                .build();
+
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(tripDescriptor);
+
+        return tripUpdateBuilder.build();
+    }
+
 }
