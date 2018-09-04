@@ -56,7 +56,7 @@ public class TripUpdateProcessor {
                     .eventTime(timestamp)
                     .value(feedMessage.toByteArray())
                     .sendAsync()
-                    .thenRun(() -> log.info("stop id: " + stopEvent.stop_id + " n of TripUpdates in memory: " + tripUpdates.size()));
+                    .thenRun(() -> log.info("stop id: " + stopEvent.getStopId() + " n of TripUpdates in memory: " + tripUpdates.size()));
 
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
@@ -69,7 +69,7 @@ public class TripUpdateProcessor {
 
         Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = stopTimeUpdateLists.get(datedVehicleJourneyId);
 
-        final int cacheKey = stopEvent.stop_seq;
+        final int cacheKey = stopEvent.getStopSeq();
         GtfsRealtime.TripUpdate.StopTimeUpdate previous = updatesForThisJourney.get(cacheKey);
         GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
         updatesForThisJourney.put(cacheKey, latest);

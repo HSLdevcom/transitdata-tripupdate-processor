@@ -34,7 +34,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
             // Create stop event
 
-            StopEvent stop = createStopEvent(common, msg.getProperties(), this.eventType);
+            StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
 
             // Create TripUpdate and send it out
             tripProcessor.processStopEvent(msg.getKey(), stop);
@@ -91,26 +91,6 @@ public abstract class BaseProcessor implements IMessageProcessor {
             return false;
         }
         return true;
-    }
-
-    private StopEvent createStopEvent(PubtransTableProtos.Common common, Map<String, String> properties, StopEvent.EventType type) {
-        //TODO fix this, use builder pattern or factory method to create immutable StopEvent
-        StopEvent event = new StopEvent();
-        event.dated_vehicle_journey_id = common.getIsOnDatedVehicleJourneyId();
-        event.event_type = type;
-        event.stop_id = common.getIsTargetedAtJourneyPatternPointGid();
-        event.stop_seq = common.getJourneyPatternSequenceNumber();
-
-        event.schedule_relationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
-        //TODO Use java OffsetDateTime?
-        event.target_time = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
-
-        event.routeData.direction = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
-        event.routeData.route_name = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
-        event.routeData.operating_day = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
-        event.routeData.start_time = properties.get(TransitdataProperties.KEY_START_TIME);
-
-        return event;
     }
 
 }

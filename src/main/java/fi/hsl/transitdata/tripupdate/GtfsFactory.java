@@ -34,11 +34,11 @@ public class GtfsFactory {
         }
         else {
             stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(String.valueOf(stopEvent.stop_id))
-                    .setStopSequence(stopEvent.stop_seq);
+                    .setStopId(String.valueOf(stopEvent.getStopId()))
+                    .setStopSequence(stopEvent.getStopSeq());
         }
 
-        switch (stopEvent.schedule_relationship) {
+        switch (stopEvent.getScheduleRelationship()) {
             case Skipped:
                 stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
                 break;
@@ -48,9 +48,9 @@ public class GtfsFactory {
         }
 
         GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(stopEvent.target_time)
+                .setTime(stopEvent.getTargetTime())
                 .build();
-        switch (stopEvent.event_type) {
+        switch (stopEvent.getEventType()) {
             case Arrival:
                 stopTimeUpdateBuilder.setArrival(stopTimeEvent);
                 break;
@@ -66,10 +66,10 @@ public class GtfsFactory {
     public static GtfsRealtime.TripUpdate newTripUpdate(StopEvent event) {
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(event.routeData.route_name)
-                .setDirectionId(event.routeData.direction)
-                .setStartDate(event.routeData.operating_day)
-                .setStartTime(event.routeData.start_time)
+                .setRouteId(event.getRouteData().getRouteName())
+                .setDirectionId(event.getRouteData().getDirection())
+                .setStartDate(event.getRouteData().getOperatingDay())
+                .setStartTime(event.getRouteData().getStartTime())
                 .build();
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()

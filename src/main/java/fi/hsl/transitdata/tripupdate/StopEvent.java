@@ -1,29 +1,104 @@
 package fi.hsl.transitdata.tripupdate;
 
-public class StopEvent {
-    //TODO Add getters and factory method / builder
+import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 
-    long dated_vehicle_journey_id;
-    public enum EventType {
-        Arrival, Departure
-    }
-    EventType event_type;
-    long target_time;
-    long stop_id;
-    int stop_seq;
+import java.util.Map;
+
+/**
+ * StopEvent is an immutable (intermediate) data format.
+ */
+public class StopEvent {
+    private StopEvent() {}
+
+    private long dvjId;
+    private EventType eventType;
+    private long targetTime;
+    private long stopId;
+    private int stopSeq;
 
     public enum ScheduleRelationship {
         Scheduled, Skipped
     }
-    ScheduleRelationship schedule_relationship;
+    private ScheduleRelationship schedule_relationship;
 
-    final RouteData routeData = new RouteData();
+    private final RouteData routeData = new RouteData();
 
     public static class RouteData {
-        String route_name;
-        int direction;
-        String operating_day;
-        String start_time;
+        private String routeName;
+        private int direction;
+        private String operatingDay;
+        private String startTime;
+
+        public String getRouteName() {
+            return routeName;
+        }
+
+        public int getDirection() {
+            return direction;
+        }
+
+        public String getOperatingDay() {
+            return operatingDay;
+        }
+
+        public String getStartTime() {
+            return startTime;
+        }
     }
+
+    public enum EventType {
+        Arrival, Departure
+    }
+
+    public static StopEvent newInstance(PubtransTableProtos.Common common, Map<String, String> properties, StopEvent.EventType type) {
+        StopEvent event = new StopEvent();
+        event.dvjId = common.getIsOnDatedVehicleJourneyId();
+        event.eventType = type;
+        event.stopId = common.getIsTargetedAtJourneyPatternPointGid();
+        event.stopSeq = common.getJourneyPatternSequenceNumber();
+
+        event.schedule_relationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
+        //TODO Use java OffsetDateTime?
+        event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
+
+        if (properties != null) {
+            event.getRouteData().direction = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
+            event.getRouteData().routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
+            event.getRouteData().operatingDay = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
+            event.getRouteData().startTime = properties.get(TransitdataProperties.KEY_START_TIME);
+        }
+
+        return event;
+    }
+
+    public long getDatedVehicleJourneyId() {
+        return dvjId;
+    }
+
+    public EventType getEventType() {
+        return eventType;
+    }
+
+    public long getTargetTime() {
+        return targetTime;
+    }
+
+    public long getStopId() {
+        return stopId;
+    }
+
+    public int getStopSeq() {
+        return stopSeq;
+    }
+
+    public ScheduleRelationship getScheduleRelationship() {
+        return schedule_relationship;
+    }
+
+    public RouteData getRouteData() {
+        return routeData;
+    }
+
 
 }
