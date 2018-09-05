@@ -20,7 +20,7 @@ public class StopEvent {
     public enum ScheduleRelationship {
         Scheduled, Skipped
     }
-    private ScheduleRelationship schedule_relationship;
+    private ScheduleRelationship scheduleRelationship;
 
     private final RouteData routeData = new RouteData();
 
@@ -58,7 +58,7 @@ public class StopEvent {
         event.stopId = common.getIsTargetedAtJourneyPatternPointGid();
         event.stopSeq = common.getJourneyPatternSequenceNumber();
 
-        event.schedule_relationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
+        event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
         //TODO Use java OffsetDateTime?
         event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
 
@@ -93,7 +93,7 @@ public class StopEvent {
     }
 
     public ScheduleRelationship getScheduleRelationship() {
-        return schedule_relationship;
+        return scheduleRelationship;
     }
 
     public RouteData getRouteData() {
