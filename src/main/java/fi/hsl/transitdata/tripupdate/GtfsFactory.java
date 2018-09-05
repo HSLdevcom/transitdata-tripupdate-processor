@@ -6,7 +6,7 @@ public class GtfsFactory {
     private GtfsFactory() {}
 
 
-    public static GtfsRealtime.FeedMessage newFeedMessage(GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
+    public static GtfsRealtime.FeedMessage newFeedMessage(String id, GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
 
         GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0")
@@ -16,7 +16,7 @@ public class GtfsFactory {
 
         GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
                 .setTripUpdate(tripUpdate)
-                .setId("test") //TODO fix?
+                .setId(id)
                 .build();
 
         return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();

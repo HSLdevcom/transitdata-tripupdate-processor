@@ -50,7 +50,8 @@ public class TripUpdateProcessor {
             GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(key, stopEvent, stops);
 
             long timestamp = TransitdataProperties.currentTimestamp();
-            GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(tripUpdate, timestamp);
+            String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
+            GtfsRealtime.FeedMessage feedMessage = GtfsFactory.newFeedMessage(id, tripUpdate, timestamp);
             producer.newMessage()
                     .key(key)
                     .eventTime(timestamp)
