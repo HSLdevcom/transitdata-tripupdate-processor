@@ -65,18 +65,23 @@ public class TripUpdateProcessor {
 
     }
 
-    private Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updateStopTimeUpdateLists
-                            (final String datedVehicleJourneyId, final StopEvent stopEvent) throws Exception {
+    Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updateStopTimeUpdateLists
+                            (final String dvjId, final StopEvent stopEvent) throws Exception {
 
-        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = stopTimeUpdateLists.get(datedVehicleJourneyId);
-
+        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updatesForThisJourney = getUpdatesForJourney(dvjId);
+        //StopSeq is the key since it's unique within one journey (running number).
+        //There can be duplicate StopIds within journey, in case the same stop is used twice in one route (rare but possible)
         final int cacheKey = stopEvent.getStopSeq();
         GtfsRealtime.TripUpdate.StopTimeUpdate previous = updatesForThisJourney.get(cacheKey);
         GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
         updatesForThisJourney.put(cacheKey, latest);
 
-        stopTimeUpdateLists.put(datedVehicleJourneyId, updatesForThisJourney);
+        //stopTimeUpdateLists.put(dvjId, updatesForThisJourney);
         return updatesForThisJourney;
+    }
+
+    Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> getUpdatesForJourney(final String dvjId) throws Exception {
+        return stopTimeUpdateLists.get(dvjId);
     }
 
     private GtfsRealtime.TripUpdate updateTripUpdates(final String datedVehicleJourneyId,
