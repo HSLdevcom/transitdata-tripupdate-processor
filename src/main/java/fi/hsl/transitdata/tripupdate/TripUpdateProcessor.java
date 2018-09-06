@@ -76,7 +76,6 @@ public class TripUpdateProcessor {
         GtfsRealtime.TripUpdate.StopTimeUpdate latest = GtfsFactory.newStopTimeUpdateFromPrevious(stopEvent, previous);
         updatesForThisJourney.put(cacheKey, latest);
 
-        //stopTimeUpdateLists.put(dvjId, updatesForThisJourney);
         return updatesForThisJourney;
     }
 
