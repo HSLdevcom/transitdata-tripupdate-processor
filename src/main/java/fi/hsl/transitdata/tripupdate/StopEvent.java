@@ -14,7 +14,6 @@ public class StopEvent {
     private long dvjId;
     private EventType eventType;
     private long targetTime;
-    private long stopId;
     private int stopSeq;
 
     public enum ScheduleRelationship {
@@ -29,6 +28,7 @@ public class StopEvent {
         private int direction;
         private String operatingDay;
         private String startTime;
+        private long stopId;
 
         public String getRouteName() {
             return routeName;
@@ -45,6 +45,10 @@ public class StopEvent {
         public String getStartTime() {
             return startTime;
         }
+
+        public long getStopId() {
+            return stopId;
+        }
     }
 
     public enum EventType {
@@ -55,7 +59,6 @@ public class StopEvent {
         StopEvent event = new StopEvent();
         event.dvjId = common.getIsOnDatedVehicleJourneyId();
         event.eventType = type;
-        event.stopId = common.getIsTargetedAtJourneyPatternPointGid();
         event.stopSeq = common.getJourneyPatternSequenceNumber();
 
         event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
@@ -63,6 +66,7 @@ public class StopEvent {
         event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
 
         if (properties != null) {
+            event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
             event.getRouteData().direction = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
             event.getRouteData().routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
             event.getRouteData().operatingDay = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
@@ -82,10 +86,6 @@ public class StopEvent {
 
     public long getTargetTime() {
         return targetTime;
-    }
-
-    public long getStopId() {
-        return stopId;
     }
 
     public int getStopSeq() {

@@ -57,7 +57,7 @@ public class TripUpdateProcessor {
                     .eventTime(timestamp)
                     .value(feedMessage.toByteArray())
                     .sendAsync()
-                    .thenRun(() -> log.info("stop id: " + stopEvent.getStopId() + " n of TripUpdates in memory: " + tripUpdates.size()));
+                    .thenRun(() -> log.info("stop id: " + stopEvent.getRouteData().getStopId() + " n of TripUpdates in memory: " + tripUpdates.size()));
 
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);

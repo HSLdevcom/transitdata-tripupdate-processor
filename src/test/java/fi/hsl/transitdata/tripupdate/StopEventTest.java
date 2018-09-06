@@ -12,17 +12,17 @@ import static org.junit.jupiter.api.Assertions.*;
 public class StopEventTest {
 
     private static final long DVJ_ID = Long.MAX_VALUE - 1;
-    private static final long STOP_ID = Long.MAX_VALUE;
     private static final int STOP_SEQ = Integer.MAX_VALUE;
 
     private static final int DIRECTION = 1;
     private static final String ROUTE_NAME = "route-abc";
     private static final String OPERATING_DAY = "monday";
     private static final String START_TIME = "2010-10-25 14:05:05";
+    private static final long STOP_ID = Long.MAX_VALUE;
 
     @Test
     public void instantiateWithoutProperties() {
-        PubtransTableProtos.Common common = mockCommon(DVJ_ID, STOP_ID, STOP_SEQ);
+        PubtransTableProtos.Common common = mockCommon(DVJ_ID, STOP_SEQ);
         StopEvent stop = StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
 
         assertIds(stop);
@@ -30,11 +30,12 @@ public class StopEventTest {
         assertNull(stop.getRouteData().getOperatingDay());
         assertNull(stop.getRouteData().getRouteName());
         assertNull(stop.getRouteData().getStartTime());
+        assertEquals(stop.getRouteData().getStopId(), 0);
     }
 
     @Test
     public void instantiateFully() {
-        PubtransTableProtos.Common common = mockCommon(DVJ_ID, STOP_ID, STOP_SEQ);
+        PubtransTableProtos.Common common = mockCommon(DVJ_ID, STOP_SEQ);
         Map<String, String> props = mockMessageProperties();
 
         StopEvent stop = StopEvent.newInstance(common, props, StopEvent.EventType.Departure);
@@ -45,16 +46,16 @@ public class StopEventTest {
         assertEquals(stop.getRouteData().getRouteName(), ROUTE_NAME);
         assertEquals(stop.getRouteData().getStartTime(), START_TIME);
         assertEquals(stop.getRouteData().getDirection(), DIRECTION);
+        assertEquals(stop.getRouteData().getStopId(), STOP_ID);
     }
 
     private void assertIds(StopEvent stop) {
-        assertTrue(stop.getStopId() == STOP_ID);
         assertTrue(stop.getDatedVehicleJourneyId() == DVJ_ID);
         assertTrue(stop.getStopSeq() == STOP_SEQ);
     }
 
-    public static StopEvent mockStopEvent(long dvjId, long stopId, int stopSequence) {
-        PubtransTableProtos.Common common = mockCommon(dvjId, stopId, stopSequence);
+    public static StopEvent mockStopEvent(long dvjId, long jppId, int stopSequence) {
+        PubtransTableProtos.Common common = mockCommon(dvjId, stopSequence);
         return StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
     }
 
@@ -65,13 +66,14 @@ public class StopEventTest {
         props.put(TransitdataProperties.KEY_ROUTE_NAME, ROUTE_NAME);
         props.put(TransitdataProperties.KEY_OPERATING_DAY, OPERATING_DAY);
         props.put(TransitdataProperties.KEY_START_TIME, START_TIME);
+        props.put(TransitdataProperties.KEY_STOP_ID, Long.toString(STOP_ID));
         return props;
     }
 
-    static PubtransTableProtos.Common mockCommon(long dvjId, long stopId, int stopSequence) {
+    static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence) {
         PubtransTableProtos.Common.Builder commonBuilder = PubtransTableProtos.Common.newBuilder();
         commonBuilder.setIsOnDatedVehicleJourneyId(dvjId);
-        commonBuilder.setIsTargetedAtJourneyPatternPointGid(stopId);
+        commonBuilder.setIsTargetedAtJourneyPatternPointGid(STOP_ID);
         commonBuilder.setJourneyPatternSequenceNumber(stopSequence);
 
         commonBuilder.setState(3L);

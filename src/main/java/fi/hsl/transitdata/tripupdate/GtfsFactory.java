@@ -34,7 +34,7 @@ public class GtfsFactory {
         }
         else {
             stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(String.valueOf(stopEvent.getStopId()))
+                    .setStopId(String.valueOf(stopEvent.getRouteData().getStopId()))
                     .setStopSequence(stopEvent.getStopSeq());
         }
 
