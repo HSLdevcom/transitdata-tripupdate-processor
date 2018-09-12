@@ -8,7 +8,7 @@ More system-level documentation can be found in [this project](https://gitlab.hs
 
 ### Dependencies
 
-This project depends on [transitdata-common](https://gitlab.hsl.fi/transitdata/transitdata-common) project.
+This project depends on [transitdata-common](https://github.com/HSLdevcom/transitdata-common) project.
 
 ### Locally
 
