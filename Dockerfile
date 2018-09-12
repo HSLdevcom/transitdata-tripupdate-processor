@@ -17,6 +17,9 @@ RUN mvn -f /usr/src/app/pom.xml clean
 
 RUN mvn -f /usr/src/app/pom.xml dependency:resolve-plugins dependency:resolve clean package
 
+#Run tests
+RUN mvn -f /usr/src/app/pom.xml test
+
 #Build the project
 COPY src /usr/src/app/src
 RUN mvn -f /usr/src/app/pom.xml clean package

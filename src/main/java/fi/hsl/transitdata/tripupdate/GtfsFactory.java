@@ -6,7 +6,7 @@ public class GtfsFactory {
     private GtfsFactory() {}
 
 
-    public static GtfsRealtime.FeedMessage newFeedMessage(GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
+    public static GtfsRealtime.FeedMessage newFeedMessage(String id, GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
 
         GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0")
@@ -16,7 +16,7 @@ public class GtfsFactory {
 
         GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
                 .setTripUpdate(tripUpdate)
-                .setId("test") //TODO fix?
+                .setId(id)
                 .build();
 
         return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();
@@ -34,11 +34,11 @@ public class GtfsFactory {
         }
         else {
             stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(String.valueOf(stopEvent.stop_id))
-                    .setStopSequence(stopEvent.stop_seq);
+                    .setStopId(String.valueOf(stopEvent.getRouteData().getStopId()))
+                    .setStopSequence(stopEvent.getStopSeq());
         }
 
-        switch (stopEvent.schedule_relationship) {
+        switch (stopEvent.getScheduleRelationship()) {
             case Skipped:
                 stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
                 break;
@@ -48,9 +48,9 @@ public class GtfsFactory {
         }
 
         GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(stopEvent.target_time)
+                .setTime(stopEvent.getTargetTime())
                 .build();
-        switch (stopEvent.event_type) {
+        switch (stopEvent.getEventType()) {
             case Arrival:
                 stopTimeUpdateBuilder.setArrival(stopTimeEvent);
                 break;
@@ -61,4 +61,21 @@ public class GtfsFactory {
 
         return stopTimeUpdateBuilder.build();
     }
+
+
+    public static GtfsRealtime.TripUpdate newTripUpdate(StopEvent event) {
+
+        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId(event.getRouteData().getRouteName())
+                .setDirectionId(event.getRouteData().getDirection())
+                .setStartDate(event.getRouteData().getOperatingDay())
+                .setStartTime(event.getRouteData().getStartTime())
+                .build();
+
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(tripDescriptor);
+
+        return tripUpdateBuilder.build();
+    }
+
 }
