@@ -19,8 +19,6 @@ This project depends on [transitdata-common](https://github.com/HSLdevcom/transi
 
 ### Docker image
 
-- At the moment the Docker image requires the common-lib (common.jar) to be found in /dependencies folder. Please copy it there.
-   - This problem will resolve itself once we have common-lib available in a public maven repository.
 - Run [this script](build-image.sh) to build the Docker image
 
 
