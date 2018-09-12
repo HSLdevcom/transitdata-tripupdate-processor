@@ -1,15 +1,15 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class TripUpdateProcessorTest {
     @Test
-    void testStopTimeUpdateCache() throws Exception {
+    public void testStopTimeUpdateCache() throws Exception {
         TripUpdateProcessor processor = new TripUpdateProcessor(null);
 
         final long firstDvjId = 99L;
