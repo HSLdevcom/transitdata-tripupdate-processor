@@ -2,15 +2,23 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fi.hsl.transitdata</groupId>
     <artifactId>transitdata-tripupdate-processor</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.1</version>
     <packaging>jar</packaging>
+
+    <repositories>
+      <repository>
+        <id>central</id>
+        <name>bintray</name>
+        <url>https://dl.bintray.com/hsldevcom/maven</url>
+      </repository>
+    </repositories>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
         <pulsar.version>2.1.0-incubating</pulsar.version>
-        <common.version>0.1.2</common.version>
+        <common.version>0.1.1</common.version>
     </properties>
 
     <dependencies>
