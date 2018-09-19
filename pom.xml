@@ -7,7 +7,7 @@
 
     <repositories>
       <repository>
-        <id>central</id>
+        <id>bintray</id>
         <name>bintray</name>
         <url>https://dl.bintray.com/hsldevcom/maven</url>
       </repository>
