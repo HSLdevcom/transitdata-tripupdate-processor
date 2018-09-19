@@ -2,12 +2,14 @@ package fi.hsl.transitdata.tripupdate;
 
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class StopEventTest {
 
@@ -36,7 +38,7 @@ public class StopEventTest {
     @Test
     public void instantiateFully() {
         PubtransTableProtos.Common common = mockCommon(DVJ_ID, STOP_SEQ);
-        Map<String, String> props = mockMessageProperties();
+        Map<String, String> props = mockMessageProperties(STOP_ID);
 
         StopEvent stop = StopEvent.newInstance(common, props, StopEvent.EventType.Departure);
 
@@ -56,17 +58,18 @@ public class StopEventTest {
 
     public static StopEvent mockStopEvent(long dvjId, long jppId, int stopSequence) {
         PubtransTableProtos.Common common = mockCommon(dvjId, stopSequence);
-        return StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
+        Map<String, String> mockProps = mockMessageProperties(stopSequence);
+        return StopEvent.newInstance(common, mockProps, StopEvent.EventType.Arrival);
     }
 
-    public static Map<String, String> mockMessageProperties() {
+    public static Map<String, String> mockMessageProperties(long stopId) {
 
         Map<String, String> props = new HashMap<>();
         props.put(TransitdataProperties.KEY_DIRECTION, Integer.toString(DIRECTION));
         props.put(TransitdataProperties.KEY_ROUTE_NAME, ROUTE_NAME);
         props.put(TransitdataProperties.KEY_OPERATING_DAY, OPERATING_DAY);
         props.put(TransitdataProperties.KEY_START_TIME, START_TIME);
-        props.put(TransitdataProperties.KEY_STOP_ID, Long.toString(STOP_ID));
+        props.put(TransitdataProperties.KEY_STOP_ID, Long.toString(stopId));
         return props;
     }
 
