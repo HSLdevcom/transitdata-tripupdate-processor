@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor)
+
 ## Description
 
 Application for creating GTFS-RT *Trip Update*-messages and publishing them to Pulsar topic(s).
