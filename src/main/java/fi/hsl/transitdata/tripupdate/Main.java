@@ -10,6 +10,7 @@ public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
+        log.info("Starting TripUpdateProcessor");
         Config config = ConfigParser.createConfig();
         try (PulsarApplication app = PulsarApplication.newInstance(config)) {
 
@@ -17,6 +18,7 @@ public class Main {
 
             MessageRouter router = new MessageRouter(context);
 
+            log.info("Start handling the messages");
             app.launchWithHandler(router);
         } catch (Exception e) {
             log.error("Exception at main", e);
