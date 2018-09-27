@@ -2,8 +2,8 @@ package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
 
-public class GtfsFactory {
-    private GtfsFactory() {}
+public class GtfsRtFactory {
+    private GtfsRtFactory() {}
 
 
     public static GtfsRealtime.FeedMessage newFeedMessage(String id, GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
