@@ -13,28 +13,27 @@ public class TripUpdateProcessorTest {
         TripUpdateProcessor processor = new TripUpdateProcessor(null);
 
         final long firstDvjId = 99L;
-        final String strFirstDvjId = Long.toString(firstDvjId);
 
         final int amount = 20;
         addStops(firstDvjId, amount, processor);
 
         final long secondDvjId = 100L;
-        final String strSecondDvjId = Long.toString(secondDvjId);
         final int secondAmount = amount - 1;
         addStops(secondDvjId, secondAmount, processor);
 
-        validateStops(strFirstDvjId, amount, processor);
-        validateStops(strSecondDvjId, secondAmount, processor);
-        validateStops("does-not-exist", 0, processor);
+        validateStops(firstDvjId, amount, processor);
+        validateStops(secondDvjId, secondAmount, processor);
+        final long nonExistingId = 69;
+        validateStops(nonExistingId, 0, processor);
 
         //Adding stops to existing StopTimeUpdates should not increase the count, nor affect the ordering.
         int existingId = 1;
         addStop(firstDvjId, existingId, existingId, processor);
-        validateStops(strFirstDvjId, amount, processor);
+        validateStops(firstDvjId, amount, processor);
         //Adding with new sequenceIDs should again increase it
         int newId = amount;
         addStop(firstDvjId, newId, newId, processor);
-        validateStops(strFirstDvjId, amount + 1, processor);
+        validateStops(firstDvjId, amount + 1, processor);
 
     }
 
@@ -45,24 +44,22 @@ public class TripUpdateProcessorTest {
             final int stopId = stopSequence;
             counter++;
 
-            final String strDvjId = Long.toString(dvjId);
             addStop(dvjId, stopId, stopSequence, processor);
 
             //Should reflect to cache size
-            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getUpdatesForJourney(strDvjId);
+            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
             assertEquals(updates.size(), counter);
         }
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        final String strDvjId = Long.toString(dvjId);
         StopEvent first = StopEventTest.mockStopEvent(dvjId, stopId, stopSequence);
         //Update cache
-        processor.updateStopTimeUpdateLists(strDvjId, first);
+        processor.updateStopTimeUpdateCache(first);
     }
 
-    private void validateStops(final String dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
-        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getUpdatesForJourney(dvjId);
+    private void validateStops(final long dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
+        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
         assertEquals(updates.size(), correctAmount);
 
         //Validate that stopIds and seqIds match and the sorting order is correct, by seqId
