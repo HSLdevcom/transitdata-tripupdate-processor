@@ -100,6 +100,7 @@ public class TripUpdateProcessor {
         GtfsRealtime.TripUpdate tripUpdate = previousTripUpdate.toBuilder()
                 .clearStopTimeUpdate()
                 .addAllStopTimeUpdate(stopTimeUpdates)
+                .setTimestamp(latest.getLastModifiedTimestamp())
                 .build();
 
         tripUpdateCache.put(dvjId, tripUpdate);

@@ -15,6 +15,7 @@ public class StopEvent {
     private EventType eventType;
     private long targetTime;
     private int stopSeq;
+    private long lastModifiedTimestamp;
 
     public enum ScheduleRelationship {
         Scheduled, Skipped
@@ -64,6 +65,7 @@ public class StopEvent {
         event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
         //TODO Use java OffsetDateTime?
         event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
+        event.lastModifiedTimestamp = common.getLastModifiedUtcDateTime();
 
         if (properties != null) {
             event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
@@ -100,5 +102,7 @@ public class StopEvent {
         return routeData;
     }
 
-
+    public long getLastModifiedTimestamp() {
+        return lastModifiedTimestamp;
+    }
 }
