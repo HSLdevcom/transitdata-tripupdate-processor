@@ -3,6 +3,7 @@ package fi.hsl.transitdata.tripupdate;
 import com.google.transit.realtime.GtfsRealtime;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -47,7 +48,7 @@ public class TripUpdateProcessorTest {
             addStop(dvjId, stopId, stopSequence, processor);
 
             //Should reflect to cache size
-            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
+            List<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdates(dvjId);
             assertEquals(updates.size(), counter);
         }
     }
@@ -59,12 +60,12 @@ public class TripUpdateProcessorTest {
     }
 
     private void validateStops(final long dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
-        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
+        List<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdates(dvjId);
         assertEquals(updates.size(), correctAmount);
 
         //Validate that stopIds and seqIds match and the sorting order is correct, by seqId
         int index = 0;
-        for (GtfsRealtime.TripUpdate.StopTimeUpdate update: updates.values()) {
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate update: updates) {
             assertEquals(Integer.toString(update.getStopSequence()), update.getStopId());
             assertEquals(update.getStopSequence(), index);
 
