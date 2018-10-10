@@ -63,8 +63,8 @@ public class StopEvent {
         event.stopSeq = common.getJourneyPatternSequenceNumber();
 
         event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
-        //TODO Use java OffsetDateTime?
-        event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
+        //Timestamps in GTFS need to be in seconds
+        event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime() / 1000; //Don't set if skipped?
         event.lastModifiedTimestamp = common.getLastModifiedUtcDateTime();
 
         if (properties != null) {
