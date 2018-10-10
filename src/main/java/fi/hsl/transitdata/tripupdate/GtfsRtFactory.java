@@ -4,6 +4,10 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 
 public class GtfsRtFactory {
+
+    public static final int DIRECTION_ID_OUTBOUND = 0;
+    public static final int DIRECTION_ID_INBOUND = 1;
+
     private GtfsRtFactory() {}
 
 
