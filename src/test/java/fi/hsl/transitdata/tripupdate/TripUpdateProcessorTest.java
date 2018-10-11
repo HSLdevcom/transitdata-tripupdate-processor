@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import org.junit.Test;
 
 import java.util.List;
@@ -54,7 +55,15 @@ public class TripUpdateProcessorTest {
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        StopEvent first = StopEventTest.mockStopEvent(dvjId, stopId, stopSequence, StopEvent.EventType.Arrival);
+        PubtransTableProtos.Common common = MockDataFactory.mockCommon(dvjId, stopSequence, dvjId);
+        final int direction = 1;
+        final String routeName = "69A";
+        final String operatingDay = "monday";
+        final String startTime = "2010-10-25 14:05:05";
+
+        Map<String, String> props = MockDataFactory.mockMessageProperties(stopId, direction, routeName, operatingDay, startTime);
+        StopEvent first = StopEvent.newInstance(common, props, StopEvent.EventType.Arrival);
+
         //Update cache
         processor.updateStopTimeUpdateCache(first);
     }

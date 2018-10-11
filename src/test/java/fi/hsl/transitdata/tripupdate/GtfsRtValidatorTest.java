@@ -18,7 +18,7 @@ public class GtfsRtValidatorTest {
         for (int stopSequence = 1; stopSequence < 100; stopSequence++) {
             //Let's switch types to make sure both work
             StopEvent.EventType type = stopSequence % 2 == 0 ? StopEvent.EventType.Arrival :StopEvent.EventType.Departure;
-            StopEvent event = StopEventTest.mockStopEvent(DVI_ID, JPP_ID, stopSequence, type);
+            StopEvent event = MockDataFactory.mockStopEvent(MockDataFactory.mockCommon(DVI_ID, stopSequence, JPP_ID), null, type);
             StopTimeUpdate update = GtfsRtFactory.newStopTimeUpdate(event);
             updates.add(update);
         }
