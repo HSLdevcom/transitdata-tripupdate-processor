@@ -54,7 +54,7 @@ public class TripUpdateProcessorTest {
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        StopEvent first = StopEventTest.mockStopEvent(dvjId, stopId, stopSequence);
+        StopEvent first = StopEventTest.mockStopEvent(dvjId, stopId, stopSequence, StopEvent.EventType.Arrival);
         //Update cache
         processor.updateStopTimeUpdateCache(first);
     }

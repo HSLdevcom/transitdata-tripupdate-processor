@@ -56,10 +56,10 @@ public class StopEventTest {
         assertTrue(stop.getStopSeq() == STOP_SEQ);
     }
 
-    public static StopEvent mockStopEvent(long dvjId, long jppId, int stopSequence) {
+    public static StopEvent mockStopEvent(long dvjId, long jppId, int stopSequence, StopEvent.EventType eventType) {
         PubtransTableProtos.Common common = mockCommon(dvjId, stopSequence);
         Map<String, String> mockProps = mockMessageProperties(stopSequence);
-        return StopEvent.newInstance(common, mockProps, StopEvent.EventType.Arrival);
+        return StopEvent.newInstance(common, mockProps, eventType);
     }
 
     public static Map<String, String> mockMessageProperties(long stopId) {
