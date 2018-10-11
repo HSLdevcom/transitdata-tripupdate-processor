@@ -69,15 +69,19 @@ public class StopEvent {
 
         if (properties != null) {
             event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
-            int pubTransDirection = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
-            int gtfsDirection = pubTransDirection == 1 ? GtfsRtFactory.DIRECTION_ID_OUTBOUND : GtfsRtFactory.DIRECTION_ID_INBOUND;
-            event.getRouteData().direction = gtfsDirection;
+            int pubtransDirection = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
+            event.getRouteData().direction = pubtransDirectionToGtfsDirection(pubtransDirection);
             event.getRouteData().routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
             event.getRouteData().operatingDay = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
             event.getRouteData().startTime = properties.get(TransitdataProperties.KEY_START_TIME);
         }
 
         return event;
+    }
+
+    public static int pubtransDirectionToGtfsDirection(int pubtransDirection) {
+        int gtfsDirection = pubtransDirection == 1 ? GtfsRtFactory.DIRECTION_ID_OUTBOUND : GtfsRtFactory.DIRECTION_ID_INBOUND;
+        return gtfsDirection;
     }
 
     public long getDatedVehicleJourneyId() {

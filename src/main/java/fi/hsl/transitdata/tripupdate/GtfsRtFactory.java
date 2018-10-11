@@ -39,7 +39,8 @@ public class GtfsRtFactory {
         }
         else {
             stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(String.valueOf(stopEvent.getRouteData().getStopId()));
+                    .setStopId(String.valueOf(stopEvent.getRouteData().getStopId()))
+                    .setStopSequence(stopEvent.getStopSeq());
         }
 
         switch (stopEvent.getScheduleRelationship()) {

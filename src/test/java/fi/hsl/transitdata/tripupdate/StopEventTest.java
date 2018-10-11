@@ -47,7 +47,7 @@ public class StopEventTest {
         assertEquals(stop.getRouteData().getOperatingDay(), OPERATING_DAY);
         assertEquals(stop.getRouteData().getRouteName(), ROUTE_NAME);
         assertEquals(stop.getRouteData().getStartTime(), START_TIME);
-        assertEquals(stop.getRouteData().getDirection(), DIRECTION);
+        assertEquals(stop.getRouteData().getDirection(), StopEvent.pubtransDirectionToGtfsDirection(DIRECTION));
         assertEquals(stop.getRouteData().getStopId(), STOP_ID);
     }
 
