@@ -94,13 +94,13 @@ public class GtfsRtValidator {
      * Either return the same valid StopTimeEvent or create a copy with time adjusted to minimum
      */
     static Optional<StopTimeEvent> validateTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMinTime) {
-        return maybeMinTime.flatMap(minTimestamp ->
-                maybeEvent.map(event -> {
-                    if (event.getTime() < minTimestamp) {
-                        return event.toBuilder().setTime(minTimestamp).build();
-                    } else {
-                        return event;
-                    }
-                }));
+        return maybeEvent.map(event ->
+           maybeMinTime.map(minTimestamp -> {
+               if (event.getTime() < minTimestamp) {
+                   return event.toBuilder().setTime(minTimestamp).build();
+               } else {
+                   return event;
+               }
+           }).orElse(event));
     }
 }

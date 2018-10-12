@@ -19,8 +19,8 @@ public class StopEventTest {
 
     private static final int DIRECTION = 1;
     private static final String ROUTE_NAME = "route-abc";
-    private static final String OPERATING_DAY = "monday";
-    private static final String START_TIME = "2010-10-25 14:05:05";
+    private static final String OPERATING_DAY = "20181225";
+    private static final String START_TIME = "14:05:05";
     private static final long STOP_ID = Long.MAX_VALUE;
 
     @Test
