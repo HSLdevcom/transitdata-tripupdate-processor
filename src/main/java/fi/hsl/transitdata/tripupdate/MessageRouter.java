@@ -33,6 +33,7 @@ public class MessageRouter implements IMessageHandler {
 
         processors.put(ProtobufSchema.PubtransRoiArrival, new ArrivalProcessor(tripProcessor));
         processors.put(ProtobufSchema.PubtransRoiDeparture, new DepartureProcessor(tripProcessor));
+        processors.put(ProtobufSchema.InternalMessagesCancellation, new CancellationProcessor(tripProcessor));
     }
 
     public void handleMessage(Message received) throws Exception {
