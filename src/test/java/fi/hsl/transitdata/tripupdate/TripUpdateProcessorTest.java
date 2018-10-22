@@ -1,8 +1,10 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -47,24 +49,32 @@ public class TripUpdateProcessorTest {
             addStop(dvjId, stopId, stopSequence, processor);
 
             //Should reflect to cache size
-            Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
+            List<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdates(dvjId);
             assertEquals(updates.size(), counter);
         }
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        StopEvent first = StopEventTest.mockStopEvent(dvjId, stopId, stopSequence);
+        PubtransTableProtos.Common common = MockDataFactory.mockCommon(dvjId, stopSequence, dvjId);
+        final int direction = 1;
+        final String routeName = "69A";
+        final String operatingDay = "monday";
+        final String startTime = "2010-10-25 14:05:05";
+
+        Map<String, String> props = MockDataFactory.mockMessageProperties(stopId, direction, routeName, operatingDay, startTime);
+        StopEvent first = StopEvent.newInstance(common, props, StopEvent.EventType.Arrival);
+
         //Update cache
         processor.updateStopTimeUpdateCache(first);
     }
 
     private void validateStops(final long dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
-        Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdatesForTripUpdate(dvjId);
+        List<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdates(dvjId);
         assertEquals(updates.size(), correctAmount);
 
         //Validate that stopIds and seqIds match and the sorting order is correct, by seqId
         int index = 0;
-        for (GtfsRealtime.TripUpdate.StopTimeUpdate update: updates.values()) {
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate update: updates) {
             assertEquals(Integer.toString(update.getStopSequence()), update.getStopId());
             assertEquals(update.getStopSequence(), index);
 

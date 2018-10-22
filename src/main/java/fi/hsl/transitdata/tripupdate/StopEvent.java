@@ -15,6 +15,7 @@ public class StopEvent {
     private EventType eventType;
     private long targetTime;
     private int stopSeq;
+    private long lastModifiedTimestamp;
 
     public enum ScheduleRelationship {
         Scheduled, Skipped
@@ -62,18 +63,25 @@ public class StopEvent {
         event.stopSeq = common.getJourneyPatternSequenceNumber();
 
         event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
-        //TODO Use java OffsetDateTime?
-        event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime(); //Don't set if skipped?
+        //Timestamps in GTFS need to be in seconds
+        event.targetTime = java.sql.Timestamp.valueOf(common.getTargetDateTime()).getTime() / 1000; //Don't set if skipped?
+        event.lastModifiedTimestamp = common.getLastModifiedUtcDateTime();
 
         if (properties != null) {
             event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
-            event.getRouteData().direction = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
+            int pubtransDirection = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
+            event.getRouteData().direction = pubtransDirectionToGtfsDirection(pubtransDirection);
             event.getRouteData().routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
             event.getRouteData().operatingDay = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
             event.getRouteData().startTime = properties.get(TransitdataProperties.KEY_START_TIME);
         }
 
         return event;
+    }
+
+    public static int pubtransDirectionToGtfsDirection(int pubtransDirection) {
+        int gtfsDirection = pubtransDirection == 1 ? GtfsRtFactory.DIRECTION_ID_OUTBOUND : GtfsRtFactory.DIRECTION_ID_INBOUND;
+        return gtfsDirection;
     }
 
     public long getDatedVehicleJourneyId() {
@@ -100,5 +108,7 @@ public class StopEvent {
         return routeData;
     }
 
-
+    public long getLastModifiedTimestamp() {
+        return lastModifiedTimestamp;
+    }
 }

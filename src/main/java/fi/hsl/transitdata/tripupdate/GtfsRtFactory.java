@@ -1,8 +1,13 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.TransitdataProperties;
 
 public class GtfsRtFactory {
+
+    public static final int DIRECTION_ID_OUTBOUND = 0;
+    public static final int DIRECTION_ID_INBOUND = 1;
+
     private GtfsRtFactory() {}
 
 
@@ -73,7 +78,8 @@ public class GtfsRtFactory {
                 .build();
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(tripDescriptor);
+                .setTrip(tripDescriptor)
+                .setTimestamp(event.getLastModifiedTimestamp());
 
         return tripUpdateBuilder.build();
     }
