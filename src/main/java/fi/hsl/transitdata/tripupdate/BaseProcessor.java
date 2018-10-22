@@ -90,6 +90,10 @@ public abstract class BaseProcessor implements IMessageProcessor {
             log.error("No TargetDatetime, message discarded");
             return false;
         }
+        if (common.getType() == 0) {
+            log.error("Event is for a via point, message discarded");
+            return false;
+        }
         return true;
     }
 

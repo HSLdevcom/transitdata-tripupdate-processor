@@ -6,6 +6,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,28 @@ public class TripUpdateProcessor {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
 
+    }
+
+    public void processTripCancellation(final String messageKey, InternalMessages.TripCancellation tripCancellation) {
+        Long dvjId = Long.parseLong(messageKey);
+
+        if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
+            GtfsRealtime.TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+
+            if (oldTripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
+                GtfsRealtime.TripUpdate.Builder newTripUpdateBuilder = oldTripUpdate.toBuilder();
+                newTripUpdateBuilder.setTrip(oldTripUpdate.getTrip().toBuilder().setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED));
+                newTripUpdateBuilder.clearStopTimeUpdate();
+                tripUpdateCache.put(dvjId, newTripUpdateBuilder.build());
+            }
+
+        } else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
+            //Current hypothesis is that this never occurs. For now simply log this event and then implement the
+            //functionality when necessary.
+            //The correct functionality is to mark the ScheduleRelationship for the TripUpdate as SCHEDULED
+            //and fetch the possible previous StopTimeUpdates from the cache and insert them to the TripUpdate.
+            log.error("Received a TripCancellation event with status of RUNNING. This status is currently unsupported");
+        }
     }
 
     StopTimeUpdate updateStopTimeUpdateCache(final StopEvent stopEvent) throws Exception {
