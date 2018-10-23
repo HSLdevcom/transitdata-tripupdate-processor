@@ -1,7 +1,9 @@
 package fi.hsl.transitdata.tripupdate;
 
+import com.google.transit.realtime.GtfsRealtime;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +88,59 @@ public class GtfsRtValidatorTest {
         if (validated.hasDeparture()) {
             assertEquals(validated.getDeparture().getTime(), expectedDeparture);
         }
+    }
+
+    @Test
+    public void testArrivalAndDepartureSequences() {
+        {
+            //Best case scenario, all in correct order
+            // A0  D0  A1  D1  A2  D2
+            LinkedList<StopTimeUpdate> raw = createStopTimeUpdateSequence(ARRIVALS, DEPARTURES);
+            List<StopTimeUpdate> same = GtfsRtValidator.validateArrivalsAndDepartures(raw, raw.getLast());
+
+            for (int n = 0; n < raw.size(); n++) {
+                StopTimeUpdate orig = raw.get(n);
+                StopTimeUpdate updated = same.get(n);
+                assertTrue(orig.getArrival().getTime() == updated.getArrival().getTime());
+                assertTrue(orig.getDeparture().getTime() == updated.getDeparture().getTime());
+            }
+        }
+        {
+            //Swap timestamps between first and second timestamp. first ones should be raised to later departure
+            // A1  D1  A0  D0  A2  D2 => A1 D1 D1  D1 A2  D2
+            long[] newArrivals = Arrays.copyOf(ARRIVALS, ARRIVALS.length);
+            newArrivals[0] = ARRIVALS[1];
+            newArrivals[1] = ARRIVALS[0];
+            long[] newDepartures = Arrays.copyOf(DEPARTURES, DEPARTURES.length);
+            newDepartures[0] = DEPARTURES[1];
+            newDepartures[1] = DEPARTURES[0];
+            LinkedList<StopTimeUpdate> raw = createStopTimeUpdateSequence(newArrivals, newDepartures);
+
+            List<StopTimeUpdate> updated = GtfsRtValidator.validateArrivalsAndDepartures(raw, raw.getLast());
+
+            StopTimeUpdate updatedFirst = updated.get(0);
+            assertTrue(updatedFirst.getArrival().getTime() == ARRIVALS[1]);
+            assertTrue(updatedFirst.getDeparture().getTime() == DEPARTURES[1]);
+
+            StopTimeUpdate updatedSecond = updated.get(1);
+            assertTrue(updatedSecond.getArrival().getTime() == DEPARTURES[1]);
+            assertTrue(updatedSecond.getDeparture().getTime() == DEPARTURES[1]);
+
+            StopTimeUpdate updatedThird = updated.get(2);
+            assertTrue(updatedThird.getArrival().getTime() == ARRIVALS[2]);
+            assertTrue(updatedThird.getDeparture().getTime() == DEPARTURES[2]);
+        }
+    }
+
+    LinkedList<StopTimeUpdate> createStopTimeUpdateSequence(long[] arrivals, long[] departures) {
+        LinkedList<StopTimeUpdate> updates = new LinkedList<>();
+        for (int n = 0; n < arrivals.length; n++) {
+            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory.mockStopTimeUpdate(
+                    MockDataFactory.mockStopEvent(StopEvent.EventType.Arrival, arrivals[n]),
+                    MockDataFactory.mockStopEvent(StopEvent.EventType.Departure, departures[n]));
+            updates.add(update);
+        }
+        return updates;
     }
 
     @Test
