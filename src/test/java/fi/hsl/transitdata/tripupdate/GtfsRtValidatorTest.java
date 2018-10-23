@@ -108,12 +108,8 @@ public class GtfsRtValidatorTest {
         {
             //Swap timestamps between first and second timestamp. first ones should be raised to later departure
             // A1  D1  A0  D0  A2  D2 => A1 D1 D1  D1 A2  D2
-            long[] newArrivals = Arrays.copyOf(ARRIVALS, ARRIVALS.length);
-            newArrivals[0] = ARRIVALS[1];
-            newArrivals[1] = ARRIVALS[0];
-            long[] newDepartures = Arrays.copyOf(DEPARTURES, DEPARTURES.length);
-            newDepartures[0] = DEPARTURES[1];
-            newDepartures[1] = DEPARTURES[0];
+            long[] newArrivals = copyAndSwap(ARRIVALS, 0, 1);
+            long[] newDepartures = copyAndSwap(DEPARTURES, 0, 1);
             LinkedList<StopTimeUpdate> raw = createStopTimeUpdateSequence(newArrivals, newDepartures);
 
             List<StopTimeUpdate> updated = GtfsRtValidator.validateArrivalsAndDepartures(raw, raw.getLast());
@@ -130,6 +126,55 @@ public class GtfsRtValidatorTest {
             assertTrue(updatedThird.getArrival().getTime() == ARRIVALS[2]);
             assertTrue(updatedThird.getDeparture().getTime() == DEPARTURES[2]);
         }
+        {
+            //Swap timestamps between first and last timestamp. all previous should be raised to the last departure
+            // A2 D2 A1  D1  A0  D0   => A2 D2 D2 D2 D2 D2
+            long[] newArrivals = copyAndSwap(ARRIVALS, 0, 2);
+            long[] newDepartures = copyAndSwap(DEPARTURES, 0, 2);
+            LinkedList<StopTimeUpdate> raw = createStopTimeUpdateSequence(newArrivals, newDepartures);
+
+            List<StopTimeUpdate> updated = GtfsRtValidator.validateArrivalsAndDepartures(raw, raw.getLast());
+
+            StopTimeUpdate updatedFirst = updated.get(0);
+            assertTrue(updatedFirst.getArrival().getTime() == ARRIVALS[2]);
+            assertTrue(updatedFirst.getDeparture().getTime() == DEPARTURES[2]);
+
+            StopTimeUpdate updatedSecond = updated.get(1);
+            assertTrue(updatedSecond.getArrival().getTime() == DEPARTURES[2]);
+            assertTrue(updatedSecond.getDeparture().getTime() == DEPARTURES[2]);
+
+            StopTimeUpdate updatedThird = updated.get(2);
+            assertTrue(updatedThird.getArrival().getTime() == DEPARTURES[2]);
+            assertTrue(updatedThird.getDeparture().getTime() == DEPARTURES[2]);
+        }
+        {
+            // First departure to delay after second arrival so second arrival needs to be moved
+            // A0 A1 D0 D1 A2  D2 => A0 D0 D0 D1 A2 D2
+            long[] newDepartures = Arrays.copyOf(DEPARTURES, DEPARTURES.length);
+            newDepartures[0] = ARRIVALS[1] + 1;
+            LinkedList<StopTimeUpdate> raw = createStopTimeUpdateSequence(ARRIVALS, newDepartures);
+
+            List<StopTimeUpdate> updated = GtfsRtValidator.validateArrivalsAndDepartures(raw, raw.getLast());
+
+            StopTimeUpdate updatedFirst = updated.get(0);
+            assertTrue(updatedFirst.getArrival().getTime() == ARRIVALS[0]);
+            assertTrue(updatedFirst.getDeparture().getTime() == newDepartures[0]);
+
+            StopTimeUpdate updatedSecond = updated.get(1);
+            assertTrue(updatedSecond.getArrival().getTime() == newDepartures[0]);
+            assertTrue(updatedSecond.getDeparture().getTime() == newDepartures[1]);
+
+            StopTimeUpdate updatedThird = updated.get(2);
+            assertTrue(updatedThird.getArrival().getTime() == ARRIVALS[2]);
+            assertTrue(updatedThird.getDeparture().getTime() == newDepartures[2]);
+        }
+    }
+
+    long[] copyAndSwap(long[] original, int index1, int index2) {
+        long[] copy = Arrays.copyOf(original, original.length);
+        copy[index1] = original[index2];
+        copy[index2] = original[index1];
+        return copy;
     }
 
     LinkedList<StopTimeUpdate> createStopTimeUpdateSequence(long[] arrivals, long[] departures) {
