@@ -53,7 +53,7 @@ public class GtfsRtValidator {
         ArrivalWins
     }
 
-    private static StopTimeUpdate validateTimestamps(StopTimeUpdate prev, StopTimeUpdate cur, OnConflict conflictBehavior) {
+    static StopTimeUpdate validateTimestamps(StopTimeUpdate prev, StopTimeUpdate cur, OnConflict conflictBehavior) {
         // We need to make sure current timestamps are > previous ones
         // and arrivals cannot be later than departures
 
@@ -68,32 +68,40 @@ public class GtfsRtValidator {
         }
 
         final Optional<StopTimeEvent> curArrival = cur.hasArrival() ? Optional.of(cur.getArrival()) : Optional.empty();
-        Optional<StopTimeEvent> newArrival = validateTime(curArrival, maybePrevTimestamp);
+        Optional<StopTimeEvent> newArrival = validateMinTime(curArrival, maybePrevTimestamp);
 
         final Optional<StopTimeEvent> curDeparture = cur.hasDeparture() ? Optional.of(cur.getDeparture()) : Optional.empty();
-        Optional<StopTimeEvent> newDeparture = validateTime(curDeparture, maybePrevTimestamp);
+        Optional<StopTimeEvent> newDeparture = validateMinTime(curDeparture, maybePrevTimestamp);
 
         // Now both are at least >= then previous timestamp.
         // Next let's resolve possible conflict at current stop
         if (conflictBehavior == OnConflict.ArrivalWins) {
             Optional<Long> maybeArrivalTimestamp = newArrival.map(StopTimeEvent::getTime);
-            newDeparture = validateTime(newDeparture, maybeArrivalTimestamp);
+            newDeparture = validateMinTime(newDeparture, maybeArrivalTimestamp);
         }
         else if (conflictBehavior == OnConflict.DepartureWins) {
             Optional<Long> maybeDepartureTimestamp = newDeparture.map(StopTimeEvent::getTime);
-            newArrival = validateTime(newArrival, maybeDepartureTimestamp);
+            newArrival = validateMaxTime(newArrival, maybeDepartureTimestamp);
         }
 
         StopTimeUpdate.Builder builder = cur.toBuilder();
         newArrival.map(builder::setArrival);
         newDeparture.map(builder::setDeparture);
+
+        //DEBUG, if other is missing add it also
+        /*if (!newArrival.isPresent() && newDeparture.isPresent()) {
+            builder.setArrival(newDeparture.get());
+        } else if (!newDeparture.isPresent() && newArrival.isPresent()) {
+            builder.setDeparture(newArrival.get());
+        }*/
+
         return builder.build();
     }
 
     /**
      * Either return the same valid StopTimeEvent or create a copy with time adjusted to minimum
      */
-    static Optional<StopTimeEvent> validateTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMinTime) {
+    static Optional<StopTimeEvent> validateMinTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMinTime) {
         return maybeEvent.map(event ->
            maybeMinTime.map(minTimestamp -> {
                if (event.getTime() < minTimestamp) {
@@ -102,5 +110,19 @@ public class GtfsRtValidator {
                    return event;
                }
            }).orElse(event));
+    }
+
+    /**
+     * Either return the same valid StopTimeEvent or create a copy with time adjusted to maximum
+     */
+    static Optional<StopTimeEvent> validateMaxTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMaxTime) {
+        return maybeEvent.map(event ->
+            maybeMaxTime.map(maxTimestamp -> {
+                if (event.getTime() > maxTimestamp) {
+                    return event.toBuilder().setTime(maxTimestamp).build();
+                } else {
+                    return event;
+                }
+            }).orElse(event));
     }
 }

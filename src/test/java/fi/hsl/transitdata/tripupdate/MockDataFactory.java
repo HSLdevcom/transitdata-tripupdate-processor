@@ -39,6 +39,13 @@ public class MockDataFactory {
         return GtfsRtFactory.newStopTimeUpdate(event);
     }
 
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(StopEvent arrival, StopEvent departure) {
+        GtfsRealtime.TripUpdate.StopTimeUpdate arrivalUpdate = GtfsRtFactory.newStopTimeUpdate(arrival);
+        GtfsRealtime.TripUpdate.StopTimeUpdate departureUpdate = GtfsRtFactory.newStopTimeUpdate(departure);
+        //Merge these two
+        return arrivalUpdate.toBuilder().setDeparture(departureUpdate.getDeparture()).build();
+    }
+
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
         String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
         PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeAsString);
