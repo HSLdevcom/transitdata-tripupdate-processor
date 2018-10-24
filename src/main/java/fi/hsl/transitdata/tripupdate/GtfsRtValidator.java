@@ -10,26 +10,58 @@ import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 public class GtfsRtValidator {
     private GtfsRtValidator() {}
 
-
-    /**
-     * Our data source might report inconsistencies with arrival and departure dwell times (departure happening before arrival),
-     * and also to running times (current arrival before previous departure).
-     * OpenTripPlanner won't accept this, so we'll try to fix the timestamps by adjusting them appropriately.
-     *
-     * We'll also remove the optional stopSequenceId's from them because they have extra via-points there which can confuse the clients.
-     */
     public static List<StopTimeUpdate> cleanStopTimeUpdates(List<StopTimeUpdate> rawEstimates, StopTimeUpdate latest) {
         List<StopTimeUpdate> fixedTimestamps = validateArrivalsAndDepartures(rawEstimates, latest);
         List<StopTimeUpdate> removedStops = removeStopSequences(fixedTimestamps);
-        return removedStops;
+        List<StopTimeUpdate> filledEvents = fillMissingArrivalsAndDepartures(removedStops);
+        return filledEvents;
     }
 
+    /**
+     * Removes the optional stopSequenceId's from StopTimeUpdates.
+     * Our updates might have extra via-points there which can confuse the clients.
+     */
     static List<StopTimeUpdate> removeStopSequences(List<StopTimeUpdate> updates) {
         return updates.stream().map(update ->
             update.toBuilder().clearStopSequence().build()
         ).collect(Collectors.toList());
     }
 
+    /**
+     * OpenTripPlanner caches arrival and departure times & estimates. Sometimes this can cause problems if we
+     * serve update containing only one of them, f.ex in a case where arrival moves to later time than cached departure.
+     *
+     * We'll try to fix this by always sending both arrival and departure times.
+     */
+    static List<StopTimeUpdate> fillMissingArrivalsAndDepartures(List<StopTimeUpdate> updates) {
+        return updates.stream().map(update -> {
+            if (update.hasArrival() && !update.hasDeparture()) {
+                StopTimeEvent newDeparture = StopTimeEvent.newBuilder()
+                        .setTime(update.getArrival().getTime())
+                        .build();
+                return update.toBuilder()
+                        .setDeparture(newDeparture)
+                        .build();
+            }
+            else if (update.hasDeparture() && !update.hasArrival()) {
+                StopTimeEvent newArrival = StopTimeEvent.newBuilder()
+                        .setTime(update.getDeparture().getTime())
+                        .build();
+                return update.toBuilder()
+                        .setArrival(newArrival)
+                        .build();
+            }
+            else {
+                return update;
+            }
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Our data source might report inconsistencies with arrival and departure dwell times (departure happening before arrival),
+     * and also to running times (current arrival before previous departure).
+     * OpenTripPlanner won't accept this, so we'll try to fix the timestamps by adjusting them appropriately.
+     */
     static List<StopTimeUpdate> validateArrivalsAndDepartures(List<StopTimeUpdate> rawEstimates, StopTimeUpdate latest) {
         LinkedList<StopTimeUpdate> validList = new LinkedList<>();
         StopTimeUpdate previous = null;
@@ -87,13 +119,6 @@ public class GtfsRtValidator {
         StopTimeUpdate.Builder builder = cur.toBuilder();
         newArrival.map(builder::setArrival);
         newDeparture.map(builder::setDeparture);
-
-        //DEBUG, if other is missing add it also
-        /*if (!newArrival.isPresent() && newDeparture.isPresent()) {
-            builder.setArrival(newDeparture.get());
-        } else if (!newDeparture.isPresent() && newArrival.isPresent()) {
-            builder.setDeparture(newArrival.get());
-        }*/
 
         return builder.build();
     }

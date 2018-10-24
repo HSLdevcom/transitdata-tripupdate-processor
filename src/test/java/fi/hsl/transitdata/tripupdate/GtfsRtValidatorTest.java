@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 import static junit.framework.TestCase.assertEquals;
@@ -228,4 +229,42 @@ public class GtfsRtValidatorTest {
         });
     }
 
+    @Test
+    public void testArrivalAndDepartureFilling() {
+
+        LinkedList<StopTimeUpdate> both = createStopTimeUpdateSequence(ARRIVALS, DEPARTURES);
+        List<StopTimeUpdate> same = GtfsRtValidator.fillMissingArrivalsAndDepartures(both);
+
+        Consumer<StopTimeUpdate> validator = (update) -> {
+            assertTrue(update.hasArrival());
+            assertTrue(update.hasDeparture());
+            assertTrue(update.getArrival().getTime() > 0);
+            assertTrue(update.getDeparture().getTime() > 0);
+        };
+        same.forEach(validator);
+
+        Consumer<StopTimeUpdate> sameTimeValidator = (update) -> {
+            assertTrue(update.hasArrival());
+            assertTrue(update.hasDeparture());
+            assertEquals(update.getArrival().getTime(), update.getDeparture().getTime());
+        };
+
+        LinkedList<StopTimeUpdate> onlyDepartures = new LinkedList<>();
+        for (int n = 0; n < DEPARTURES.length; n++) {
+            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory.mockStopTimeUpdate(
+                    StopEvent.EventType.Departure, DEPARTURES[n]);
+            onlyDepartures.add(update);
+        }
+        List<StopTimeUpdate> filledArrivals = GtfsRtValidator.fillMissingArrivalsAndDepartures(onlyDepartures);
+        filledArrivals.forEach(sameTimeValidator);
+
+        LinkedList<StopTimeUpdate> onlyArrivals = new LinkedList<>();
+        for (int n = 0; n < ARRIVALS.length; n++) {
+            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory.mockStopTimeUpdate(
+                    StopEvent.EventType.Arrival, ARRIVALS[n]);
+            onlyArrivals.add(update);
+        }
+        List<StopTimeUpdate> filledDepartures = GtfsRtValidator.fillMissingArrivalsAndDepartures(onlyArrivals);
+        filledDepartures.forEach(sameTimeValidator);
+    }
 }
