@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
+import static com.google.transit.realtime.GtfsRealtime.*;
 
 public class TripUpdateProcessor {
 
@@ -54,11 +55,11 @@ public class TripUpdateProcessor {
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
-            GtfsRealtime.TripUpdate tripUpdate = updateTripUpdates(stopEvent, validated);
+            TripUpdate tripUpdate = updateTripUpdates(stopEvent, validated);
 
             long timestamp = TransitdataProperties.currentTimestamp();
             String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
-            GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(id, tripUpdate, timestamp);
+            FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(id, tripUpdate, timestamp);
             producer.newMessage()
                     .key(messageKey)
                     .eventTime(timestamp)
@@ -72,24 +73,26 @@ public class TripUpdateProcessor {
 
     }
 
-    public void processTripCancellation(final String messageKey, InternalMessages.TripCancellation tripCancellation) {
+    public void processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
         Long dvjId = Long.parseLong(messageKey);
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            GtfsRealtime.TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
-            if (oldTripUpdate != null) {
-                if (oldTripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
-                    GtfsRealtime.TripUpdate.Builder newTripUpdateBuilder = oldTripUpdate.toBuilder();
+            TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+            if (oldTripUpdate != null &&
+                oldTripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
 
-                    GtfsRealtime.TripDescriptor tripDescriptor = oldTripUpdate
-                            .getTrip().toBuilder()
-                            .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
-                            .build();
+                TripDescriptor tripDescriptor = oldTripUpdate.getTrip().toBuilder()
+                        .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                        .build();
 
-                    newTripUpdateBuilder.setTrip(tripDescriptor);
-                    newTripUpdateBuilder.clearStopTimeUpdate();
-                    tripUpdateCache.put(dvjId, newTripUpdateBuilder.build());
-                }
+                TripUpdate newTripUpdate = oldTripUpdate.toBuilder()
+                        .setTrip(tripDescriptor)
+                        .clearStopTimeUpdate()
+                        .setTimestamp(messageTimestamp)
+                        .build();
+
+                tripUpdateCache.put(dvjId, newTripUpdate);
+
             }
             else {
                 log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
@@ -136,12 +139,12 @@ public class TripUpdateProcessor {
 
         final long dvjId = latest.getDatedVehicleJourneyId();
 
-        GtfsRealtime.TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+        TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
         if (previousTripUpdate == null) {
             previousTripUpdate = GtfsRtFactory.newTripUpdate(latest);
         }
 
-        GtfsRealtime.TripUpdate tripUpdate = previousTripUpdate.toBuilder()
+        TripUpdate tripUpdate = previousTripUpdate.toBuilder()
                 .clearStopTimeUpdate()
                 .addAllStopTimeUpdate(stopTimeUpdates)
                 .setTimestamp(latest.getLastModifiedTimestamp())

@@ -40,7 +40,7 @@ public class TripCancellationProcessor implements IMessageProcessor {
     public void processMessage(Message msg) {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdateProcessor.processTripCancellation(msg.getKey(), tripCancellation);
+            tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
         }
