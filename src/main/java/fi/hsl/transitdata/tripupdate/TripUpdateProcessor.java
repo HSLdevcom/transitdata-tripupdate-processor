@@ -74,12 +74,22 @@ public class TripUpdateProcessor {
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
             GtfsRealtime.TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+            if (oldTripUpdate != null) {
+                if (oldTripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
+                    GtfsRealtime.TripUpdate.Builder newTripUpdateBuilder = oldTripUpdate.toBuilder();
 
-            if (oldTripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
-                GtfsRealtime.TripUpdate.Builder newTripUpdateBuilder = oldTripUpdate.toBuilder();
-                newTripUpdateBuilder.setTrip(oldTripUpdate.getTrip().toBuilder().setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED));
-                newTripUpdateBuilder.clearStopTimeUpdate();
-                tripUpdateCache.put(dvjId, newTripUpdateBuilder.build());
+                    GtfsRealtime.TripDescriptor tripDescriptor = oldTripUpdate
+                            .getTrip().toBuilder()
+                            .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                            .build();
+
+                    newTripUpdateBuilder.setTrip(tripDescriptor);
+                    newTripUpdateBuilder.clearStopTimeUpdate();
+                    tripUpdateCache.put(dvjId, newTripUpdateBuilder.build());
+                }
+            }
+            else {
+                log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
             }
 
         } else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
@@ -88,6 +98,8 @@ public class TripUpdateProcessor {
             //The correct functionality is to mark the ScheduleRelationship for the TripUpdate as SCHEDULED
             //and fetch the possible previous StopTimeUpdates from the cache and insert them to the TripUpdate.
             log.error("Received a TripCancellation event with status of RUNNING. This status is currently unsupported");
+        } else {
+            log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
         }
     }
 
