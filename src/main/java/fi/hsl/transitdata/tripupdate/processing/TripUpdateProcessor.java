@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -7,6 +7,9 @@ import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
+import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.application;
 
 import com.typesafe.config.Config;
 import fi.hsl.common.config.ConfigParser;

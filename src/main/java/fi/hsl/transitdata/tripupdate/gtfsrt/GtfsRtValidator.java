@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import java.util.LinkedList;
 import java.util.List;

@@ -1,7 +1,8 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.models;
 
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 
 import java.util.Map;
 

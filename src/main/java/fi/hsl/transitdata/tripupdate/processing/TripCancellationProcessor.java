@@ -1,7 +1,8 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

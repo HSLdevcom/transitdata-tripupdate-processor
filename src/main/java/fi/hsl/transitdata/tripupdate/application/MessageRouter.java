@@ -1,9 +1,13 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.application;
 
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
+import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
+import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
+import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
+import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
