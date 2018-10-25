@@ -37,12 +37,11 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
     @Override
     public void processMessage(Message msg) {
-
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
             tripUpdateProcessor.processTripCancellation(msg.getKey(), tripCancellation);
-        } catch (InvalidProtocolBufferException e) {
-            log.error("Could not parse TripCancellation: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Could not parse TripCancellation: " + e.getMessage(), e);
         }
 
     }
