@@ -87,7 +87,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             log.error("No JourneyPatternPointGid, message discarded");
             return false;
         }
-        if (common.getTargetDateTime() == null || common.getTargetDateTime().isEmpty()) {
+        if (!common.hasTargetUtcDateTimeMs()) {
             log.error("No TargetDatetime, message discarded");
             return false;
         }
