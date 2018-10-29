@@ -47,9 +47,9 @@ public class MockDataFactory {
     }
 
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
-        String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
-        PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeAsString);
-        System.out.println(startTimeAsString);
+        String startTimeAsString = START_TIME_FORMAT.format(new Date());
+        PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
+        //System.out.println(startTimeAsString);
         final int stopId = stopSequence;
         String[] dateAndTime = startTimeAsString.split(" ");
 
@@ -70,18 +70,18 @@ public class MockDataFactory {
     }
 
     public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId) {
-        return mockCommon(dvjId, stopSequence, jppId, "2018-12-24 18:00:00");
+        return mockCommon(dvjId, stopSequence, jppId, 1545674400000L);
     }
 
 
-    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId, String targetDateTime) {
+    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId, long targetDateTimeMs) {
         PubtransTableProtos.Common.Builder commonBuilder = PubtransTableProtos.Common.newBuilder();
         commonBuilder.setIsOnDatedVehicleJourneyId(dvjId);
         commonBuilder.setIsTargetedAtJourneyPatternPointGid(jppId);
         commonBuilder.setJourneyPatternSequenceNumber(stopSequence);
 
         commonBuilder.setState(3L);
-        commonBuilder.setTargetDateTime(targetDateTime);
+        commonBuilder.setTargetUtcDateTimeMs(targetDateTimeMs);
         commonBuilder.setSchemaVersion(commonBuilder.getSchemaVersion());
 
         commonBuilder.setId(987654321L);
@@ -89,7 +89,7 @@ public class MockDataFactory {
         commonBuilder.setVisitCountNumber(2);
         commonBuilder.setType(3);
         commonBuilder.setIsValidYesNo(true);
-        commonBuilder.setLastModifiedUtcDateTime(1536218315L);
+        commonBuilder.setLastModifiedUtcDateTimeMs(1536218315000L);
 
         return commonBuilder.build();
     }
