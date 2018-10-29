@@ -5,7 +5,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
@@ -55,49 +54,39 @@ public class TripUpdateProcessor {
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
-            TripUpdate tripUpdate = updateTripUpdates(stopEvent, validated);
+            final TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEvent, validated);
+            //According to GTFS spec, timestamp identifies the moment when the content of this feed has been created in POSIX time
+            final long timestamp = tripUpdate.getTimestamp();
+            final String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
 
-            long timestamp = TransitdataProperties.currentTimestamp();
-            String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
-            FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(id, tripUpdate, timestamp);
-            producer.newMessage()
-                    .key(messageKey)
-                    .eventTime(timestamp)
-                    .value(feedMessage.toByteArray())
-                    .sendAsync()
-                    .thenRun(() -> log.debug("Sending TripUpdate for dvjId " + id + " with " + tripUpdate.getStopTimeUpdateCount() + " StopTimeUpdates"));
-
+            sendTripUpdate(messageKey, tripUpdate, id, timestamp);
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
 
     }
 
+    private void sendTripUpdate(final String messageKey, final TripUpdate tripUpdate, final String dvjId, final long timestamp) {
+        FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, timestamp);
+        producer.newMessage()
+                .key(messageKey)
+                .eventTime(timestamp)
+                .value(feedMessage.toByteArray())
+                .sendAsync()
+                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
+                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+
+    }
+
     public void processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
+        //Message key is now DVJ-ID in cancellation messages, however it's DVJ-ID + JPP-ID in Stop Events.
+        //TODO fix, make consistent.
         Long dvjId = Long.parseLong(messageKey);
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
-            if (oldTripUpdate != null &&
-                oldTripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
-
-                TripDescriptor tripDescriptor = oldTripUpdate.getTrip().toBuilder()
-                        .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
-                        .build();
-
-                TripUpdate newTripUpdate = oldTripUpdate.toBuilder()
-                        .setTrip(tripDescriptor)
-                        .clearStopTimeUpdate()
-                        .setTimestamp(messageTimestamp)
-                        .build();
-
-                tripUpdateCache.put(dvjId, newTripUpdate);
-
-            }
-            else {
-                log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
-            }
-
+            updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp)
+                    .ifPresent(newUpdate ->
+                            sendTripUpdate(messageKey, newUpdate, dvjId.toString(), messageTimestamp));
         } else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the
             //functionality when necessary.
@@ -135,7 +124,7 @@ public class TripUpdateProcessor {
     }
 
 
-    private GtfsRealtime.TripUpdate updateTripUpdates(final StopEvent latest, Collection<StopTimeUpdate> stopTimeUpdates) {
+    private TripUpdate updateTripUpdateCacheWithStopTimes(final StopEvent latest, Collection<StopTimeUpdate> stopTimeUpdates) {
 
         final long dvjId = latest.getDatedVehicleJourneyId();
 
@@ -153,5 +142,30 @@ public class TripUpdateProcessor {
         tripUpdateCache.put(dvjId, tripUpdate);
 
         return tripUpdate;
+    }
+
+    private Optional<TripUpdate> updateTripUpdateCacheWithCancellation(long dvjId, long messageTimestamp) {
+        TripUpdate newTripUpdate = null;
+
+        TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+        if (oldTripUpdate != null) {
+            if (oldTripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
+                TripDescriptor tripDescriptor = oldTripUpdate.getTrip().toBuilder()
+                        .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                        .build();
+
+                newTripUpdate = oldTripUpdate.toBuilder()
+                        .setTrip(tripDescriptor)
+                        .clearStopTimeUpdate()
+                        .setTimestamp(messageTimestamp)
+                        .build();
+
+                tripUpdateCache.put(dvjId, newTripUpdate);
+            }
+        }
+        else {
+            log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
+        }
+        return Optional.ofNullable(newTripUpdate);
     }
 }
