@@ -47,7 +47,7 @@ public class MockDataFactory {
     }
 
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
-        String startTimeAsString = START_TIME_FORMAT.format(new Date());
+        String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
         PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
         //System.out.println(startTimeAsString);
         final int stopId = stopSequence;
