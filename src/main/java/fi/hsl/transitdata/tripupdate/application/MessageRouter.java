@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 
 public class MessageRouter implements IMessageHandler {
@@ -39,25 +40,37 @@ public class MessageRouter implements IMessageHandler {
         processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
     }
 
-    public void handleMessage(Message received) throws Exception {
+    private Optional<ProtobufSchema> parseProtobufSchema(Message received) {
         try {
             String schemaType = received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA);
             log.debug("Received message with schema type " + schemaType);
-
             ProtobufSchema schema = ProtobufSchema.fromString(schemaType);
-            IMessageProcessor processor = processors.get(schema);
+            return Optional.of(schema);
+        }
+        catch (Exception e) {
+            log.error("Failed to parse protobuf schema", e);
+            return Optional.empty();
+        }
+    }
 
-            if (processor != null) {
-                if (processor.validateMessage(received)) {
-                    processor.processMessage(received);
+    public void handleMessage(Message received) throws Exception {
+        try {
+            Optional<ProtobufSchema> maybeSchema = parseProtobufSchema(received);
+            maybeSchema.ifPresent(schema -> {
+                IMessageProcessor processor = processors.get(schema);
+                if (processor != null) {
+                    if (processor.validateMessage(received)) {
+                        processor.processMessage(received);
+                    }
+                    else {
+                        log.warn("Errors with message payload, ignoring.");
+                    }
                 }
                 else {
-                    log.warn("Errors with message payload, ignoring.");
+                    log.warn("Received message with unknown schema, ignoring: " + schema);
                 }
-            }
-            else {
-                log.warn("Received message with unknown schema, ignoring: " + schema);
-            }
+            });
+
             consumer.acknowledgeAsync(received)
                     .exceptionally(throwable -> {
                         log.error("Failed to ack Pulsar message", throwable);
