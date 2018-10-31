@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
@@ -30,7 +31,10 @@ public abstract class BaseProcessor implements IMessageProcessor {
     protected abstract PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException;
 
     @Override
-    public void processMessage(Message msg) {
+    public GtfsRealtime.TripUpdate processMessage(Message msg) {
+
+        GtfsRealtime.TripUpdate tripUpdate = null;
+
         try {
             PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
             // Create stop event
@@ -38,11 +42,13 @@ public abstract class BaseProcessor implements IMessageProcessor {
             StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
 
             // Create TripUpdate and send it out
-            tripProcessor.processStopEvent(msg.getKey(), stop);
+            tripUpdate = tripProcessor.processStopEvent(msg.getKey(), stop);
         }
         catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse ROIArrival from message payload", e);
         }
+
+        return tripUpdate;
     }
 
     @Override
