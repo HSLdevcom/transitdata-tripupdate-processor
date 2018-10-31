@@ -46,7 +46,10 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public void processStopEvent(final String messageKey, StopEvent stopEvent) {
+    public TripUpdate processStopEvent(final String messageKey, StopEvent stopEvent) {
+
+        TripUpdate tripUpdate = null;
+
         try {
             StopTimeUpdate latest = updateStopTimeUpdateCache(stopEvent);
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(stopEvent.getDatedVehicleJourneyId());
@@ -54,39 +57,31 @@ public class TripUpdateProcessor {
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
-            final TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEvent, validated);
+            tripUpdate = updateTripUpdateCacheWithStopTimes(stopEvent, validated);
             //According to GTFS spec, timestamp identifies the moment when the content of this feed has been created in POSIX time
-            final long timestamp = tripUpdate.getTimestamp();
-            final String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
+            //final long timestamp = tripUpdate.getTimestamp();
+            //final String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
 
-            sendTripUpdate(messageKey, tripUpdate, id, timestamp);
+            //sendTripUpdate(messageKey, tripUpdate, id, timestamp);
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
 
-    }
-
-    private void sendTripUpdate(final String messageKey, final TripUpdate tripUpdate, final String dvjId, final long timestamp) {
-        FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, timestamp);
-        producer.newMessage()
-                .key(messageKey)
-                .eventTime(timestamp)
-                .value(feedMessage.toByteArray())
-                .sendAsync()
-                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
-                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+        return tripUpdate;
 
     }
 
-    public void processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
+
+
+    public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
         //Message key is now DVJ-ID in cancellation messages, however it's DVJ-ID + JPP-ID in Stop Events.
         //TODO fix, make consistent.
         Long dvjId = Long.parseLong(messageKey);
 
+        TripUpdate tripUpdate = null;
+
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp)
-                    .ifPresent(newUpdate ->
-                            sendTripUpdate(messageKey, newUpdate, dvjId.toString(), messageTimestamp));
+            tripUpdate = updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp);
         } else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the
             //functionality when necessary.
@@ -96,6 +91,8 @@ public class TripUpdateProcessor {
         } else {
             log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
         }
+
+        return tripUpdate;
     }
 
     StopTimeUpdate updateStopTimeUpdateCache(final StopEvent stopEvent) throws Exception {
@@ -144,7 +141,7 @@ public class TripUpdateProcessor {
         return tripUpdate;
     }
 
-    private Optional<TripUpdate> updateTripUpdateCacheWithCancellation(long dvjId, long messageTimestamp) {
+    private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId, long messageTimestamp) {
         TripUpdate newTripUpdate = null;
 
         TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
@@ -164,8 +161,9 @@ public class TripUpdateProcessor {
             }
         }
         else {
+
             log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
         }
-        return Optional.ofNullable(newTripUpdate);
+        return newTripUpdate;
     }
 }
