@@ -1,15 +1,18 @@
 package fi.hsl.transitdata.tripupdate.application;
 
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
 import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.Producer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,10 +27,11 @@ public class MessageRouter implements IMessageHandler {
     private Map<ProtobufSchema, IMessageProcessor> processors = new HashMap<>();
 
     private Consumer<byte[]> consumer;
-
+    private Producer<byte[]> producer;
 
     public MessageRouter(PulsarApplicationContext context) {
         consumer = context.getConsumer();
+        producer = context.getProducer();
         registerHandlers(context);
     }
 
@@ -60,7 +64,8 @@ public class MessageRouter implements IMessageHandler {
                 IMessageProcessor processor = processors.get(schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
-                        processor.processMessage(received);
+                        GtfsRealtime.TripUpdate tripUpdate = processor.processMessage(received);
+                        sendTripUpdate();
                     }
                     else {
                         log.warn("Errors with message payload, ignoring.");
@@ -82,7 +87,17 @@ public class MessageRouter implements IMessageHandler {
         catch (Exception e) {
             log.error("Exception while handling message", e);
         }
-
     }
 
+    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId, final long timestamp) {
+        GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, timestamp);
+        producer.newMessage()
+                .key(dvjId)
+                .eventTime(timestamp)
+                .value(feedMessage.toByteArray())
+                .sendAsync()
+                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
+                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+
+    }
 }
