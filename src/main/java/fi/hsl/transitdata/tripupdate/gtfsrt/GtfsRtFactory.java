@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
 public class GtfsRtFactory {
@@ -83,5 +84,23 @@ public class GtfsRtFactory {
 
         return tripUpdateBuilder.build();
     }
+
+    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestamp) {
+
+        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId(cancellation.getRouteId())
+                .setDirectionId(cancellation.getDirectionId())
+                .setStartDate(cancellation.getStartDate())
+                .setStartTime(cancellation.getStartTime())
+                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                .build();
+
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(tripDescriptor)
+                .setTimestamp(timestamp);
+
+        return tripUpdateBuilder.build();
+    }
+
 
 }

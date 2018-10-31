@@ -84,16 +84,17 @@ public class TripUpdateProcessor {
         Long dvjId = Long.parseLong(messageKey);
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp)
-                    .ifPresent(newUpdate ->
-                            sendTripUpdate(messageKey, newUpdate, dvjId.toString(), messageTimestamp));
-        } else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
+            TripUpdate update = updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp, tripCancellation);
+            sendTripUpdate(messageKey, update, dvjId.toString(), messageTimestamp);
+        }
+        else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the
             //functionality when necessary.
             //The correct functionality is to mark the ScheduleRelationship for the TripUpdate as SCHEDULED
             //and fetch the possible previous StopTimeUpdates from the cache and insert them to the TripUpdate.
             log.error("Received a TripCancellation event with status of RUNNING. This status is currently unsupported");
-        } else {
+        }
+        else {
             log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
         }
     }
@@ -144,28 +145,25 @@ public class TripUpdateProcessor {
         return tripUpdate;
     }
 
-    private Optional<TripUpdate> updateTripUpdateCacheWithCancellation(long dvjId, long messageTimestamp) {
-        TripUpdate newTripUpdate = null;
-
-        TripUpdate oldTripUpdate = tripUpdateCache.getIfPresent(dvjId);
-        if (oldTripUpdate != null) {
-            if (oldTripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
-                TripDescriptor tripDescriptor = oldTripUpdate.getTrip().toBuilder()
-                        .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
-                        .build();
-
-                newTripUpdate = oldTripUpdate.toBuilder()
-                        .setTrip(tripDescriptor)
-                        .clearStopTimeUpdate()
-                        .setTimestamp(messageTimestamp)
-                        .build();
-
-                tripUpdateCache.put(dvjId, newTripUpdate);
-            }
+    private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId,
+                                                             long messageTimestamp,
+                                                             InternalMessages.TripCancellation cancellation) {
+        TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+        if (previousTripUpdate == null) {
+            previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestamp);
         }
-        else {
-            log.warn("Failed to find TripUpdate for dvj-id {} from cache", dvjId);
-        }
-        return Optional.ofNullable(newTripUpdate);
+
+        TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
+                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                .build();
+
+        TripUpdate newTripUpdate = previousTripUpdate.toBuilder()
+                .setTrip(tripDescriptor)
+                .clearStopTimeUpdate()
+                .setTimestamp(messageTimestamp)
+                .build();
+
+        tripUpdateCache.put(dvjId, newTripUpdate);
+        return newTripUpdate;
     }
 }
