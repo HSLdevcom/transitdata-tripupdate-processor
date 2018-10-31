@@ -1,7 +1,8 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,12 +38,11 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
     @Override
     public void processMessage(Message msg) {
-
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdateProcessor.processTripCancellation(msg.getKey(), tripCancellation);
-        } catch (InvalidProtocolBufferException e) {
-            log.error("Could not parse TripCancellation: " + e.getMessage());
+            tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+        } catch (Exception e) {
+            log.error("Could not parse TripCancellation: " + e.getMessage(), e);
         }
 
     }

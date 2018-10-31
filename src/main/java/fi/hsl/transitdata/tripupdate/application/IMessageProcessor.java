@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.application;
 
 import org.apache.pulsar.client.api.Message;
 

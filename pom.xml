@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fi.hsl.transitdata</groupId>
     <artifactId>transitdata-tripupdate-processor</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
     <packaging>jar</packaging>
 
     <repositories>
@@ -67,7 +67,7 @@
                             <archiveBaseDirectory>${project.basedir}</archiveBaseDirectory>
                             <archive>
                                 <manifest>
-                                    <mainClass>fi.hsl.transitdata.tripupdate.Main</mainClass>
+                                    <mainClass>fi.hsl.transitdata.tripupdate.application.Main</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>

@@ -1,15 +1,16 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
+import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
+import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);

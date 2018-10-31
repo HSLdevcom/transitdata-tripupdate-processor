@@ -3,12 +3,13 @@ package fi.hsl.transitdata.tripupdate;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
+import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class MockDataFactory {
 

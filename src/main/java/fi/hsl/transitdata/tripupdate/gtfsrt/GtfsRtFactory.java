@@ -1,7 +1,7 @@
-package fi.hsl.transitdata.tripupdate;
+package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
 public class GtfsRtFactory {
 
