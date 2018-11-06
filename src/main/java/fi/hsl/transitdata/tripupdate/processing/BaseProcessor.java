@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
@@ -81,6 +82,13 @@ public abstract class BaseProcessor implements IMessageProcessor {
                 return false;
             }
         }
+
+        //Filter out trains. Currently route IDs for trains are 3001 and 3002.
+        Pattern trainPattern = Pattern.compile("^300(1|2)");
+        if (trainPattern.matcher(msg.getProperty(TransitdataProperties.KEY_ROUTE_NAME)).find()) {
+            return false;
+        }
+
         return true;
     }
 
