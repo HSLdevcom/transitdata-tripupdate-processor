@@ -7,9 +7,14 @@ import fi.hsl.common.config.ConfigUtils;
 import fi.hsl.common.pulsar.MockContainers;
 import fi.hsl.common.pulsar.PulsarApplication;
 import fi.hsl.common.pulsar.PulsarMockApplication;
+import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.MockDataFactory;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.PulsarClientException;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -18,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PulsarContainer;
 
 import java.nio.charset.Charset;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -93,26 +99,38 @@ public class ITTripUpdateProcessor {
     }
 
     @Test
-    public void testSimpleMessage() throws Exception {
+    public void testCancellation() throws Exception {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
+                final String dvjId = "1234567890";
+                final String route = "757";
+                final int direction = 1;
+                final String date = "2020-12-24";
+                final String time = "18:00:00";
+                final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
+                final long now = System.currentTimeMillis();
 
-                final String payload = "Test-message";
-                context.source.send(payload.getBytes());
-
+                ITMockDataSource.SourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now);
+                ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
-
 
                 Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
                 assertNotNull(received);
 
+                validatePulsarProperties(received, now);
 
-                assertArrayEquals(payload.getBytes(), received.getData());
                 logger.info("Message read back, all good");
             }
         };
         testPulsar(logic);
+    }
+
+    private void validatePulsarProperties(Message<byte[]> received, long eventTime) {
+        assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
+        //assertEquals(dvjId, received.getProperty(TransitdataProperties.KEY_DVJ_ID)); //TODO Should this exist?
+        assertEquals(eventTime, received.getEventTime());
+
     }
 
     public void testPulsar(TestLogic logic) throws Exception {
@@ -166,5 +184,6 @@ public class ITTripUpdateProcessor {
         assertFalse(source.isConnected());
         assertFalse(sink.isConnected());
     }
+
 
 }
