@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.validators;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.transitdata.tripupdate.MockDataFactory;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -11,94 +12,53 @@ import static org.junit.Assert.assertEquals;
 public class TripUpdateMaxAgeValidatorTest {
 
     @Test
-    public void tripUpdateWithPrematureDepartureIsDiscarded() {
+    public void tripUpdateWithNoStopTimeUpdatesIsAccepted() {
 
-        //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        //2 hours max age
+        TripUpdateMaxAgeValidator validator = new TripUpdateMaxAgeValidator(7200);
 
-        //2018-11-07T17:10:00 in Helsinki/Europe
-        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
-        stopTimeUpdates.add(newMockStopTimeUpdate("A", 0, 1541603400));
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00");
 
-        GtfsRealtime.TripUpdate tripUpdate = newMockTripUpdate("1010", 0, "20181107",
-                "17:14:00", stopTimeUpdates);
-
-        assertEquals(false, validator.validate(tripUpdate));
-
-    }
-
-    @Test
-    public void tripUpdateWithPrematureArrivalIsDiscarded() {
-
-        //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
-
-        //2018-11-07T17:10:00 in Helsinki/Europe
-        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
-        stopTimeUpdates.add(newMockStopTimeUpdate("A", 1541603400, 0));
-
-        GtfsRealtime.TripUpdate tripUpdate = newMockTripUpdate("1010", 0, "20181107",
-                "17:14:00", stopTimeUpdates);
-
-        assertEquals(false, validator.validate(tripUpdate));
-
-    }
-
-    @Test
-    public void tripUpdateWithValidDepartureIsAccepted() {
-
-        //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
-
-        //2018-11-07T17:10:00 in Helsinki/Europe
-        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
-        stopTimeUpdates.add(newMockStopTimeUpdate("A", 0, 1541603400));
-
-        GtfsRealtime.TripUpdate tripUpdate = newMockTripUpdate("1010", 0, "20181107",
-                "17:11:00", stopTimeUpdates);
-
+        //Validate with the public interface method
         assertEquals(true, validator.validate(tripUpdate));
 
     }
 
-    private GtfsRealtime.TripUpdate.StopTimeUpdate newMockStopTimeUpdate(String stopId, long arrivalTime,
-                                                                         long departureTime) {
+    @Test
+    public void tripUpdateWithOveragedLastStopDepartureTimeIsDiscarded() {
 
-        GtfsRealtime.TripUpdate.StopTimeEvent arrival = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(arrivalTime)
-                .build();
+        //2 hours max age
+        TripUpdateMaxAgeValidator validator = new TripUpdateMaxAgeValidator(7200);
 
-        GtfsRealtime.TripUpdate.StopTimeEvent departure = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(departureTime)
-                .build();
+        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
+        //2018-11-07T17:10:00 in Helsinki/Europe
+        stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
+        //2018-11-07T17:30:00 in Helsinki/Europe
+        stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("B", 0, 1541604600));
 
-        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00", stopTimeUpdates);
 
-        if (arrivalTime != 0) {
-           stopTimeUpdateBuilder.setArrival(arrival);
-        }
-        if (departureTime != 0) {
-            stopTimeUpdateBuilder.setDeparture(departure);
-        }
+        //Validate with 2018-11-07T19:31:00
+        assertEquals(false, validator.validateWithCurrentTime(tripUpdate, 1541611860));
 
-        return stopTimeUpdateBuilder.setStopId(stopId).build();
     }
 
-    private GtfsRealtime.TripUpdate newMockTripUpdate(String routeId, int directionId,
-                                                      String startDate, String startTime,
-                                                      Iterable<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdateList) {
+    @Test
+    public void tripUpdateWithValidLastStopDepartureTimeIsAccepted() {
 
-        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(routeId)
-                .setDirectionId(directionId)
-                .setStartDate(startDate)
-                .setStartTime(startTime)
-                .build();
+        //2 hours max age
+        TripUpdateMaxAgeValidator validator = new TripUpdateMaxAgeValidator(7200);
 
-        return GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(tripDescriptor)
-                .addAllStopTimeUpdate(stopTimeUpdateList)
-                .build();
+        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
+        //2018-11-07T17:10:00 in Helsinki/Europe
+        stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
+        //2018-11-07T17:30:00 in Helsinki/Europe
+        stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("B", 0, 1541604600));
+
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00", stopTimeUpdates);
+
+        //Validate with 2018-11-07T19:31:00
+        assertEquals(true, validator.validateWithCurrentTime(tripUpdate, 1541611740));
 
     }
 }

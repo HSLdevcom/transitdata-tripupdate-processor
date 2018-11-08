@@ -12,6 +12,10 @@ public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
 
     @Override
     public boolean validate(GtfsRealtime.TripUpdate tripUpdate) {
+        return validateWithCurrentTime(tripUpdate, System.currentTimeMillis() / 1000);
+    }
+
+    boolean validateWithCurrentTime(GtfsRealtime.TripUpdate tripUpdate, long currentPosixTime) {
 
         //If a TripUpdate has no StopTimeUpdates, it is most likely represents a trip that has been cancelled
         //Current hypothesis is that these messages should always be relevant and thus routed through
@@ -28,7 +32,7 @@ public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
             tripLastStopTimeEventTime = tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).getDeparture().getTime();
         }
 
-        if ((System.currentTimeMillis() / 1000) - tripLastStopTimeEventTime > tripUpdateMaxAgeInSeconds) {
+        if (currentPosixTime - tripLastStopTimeEventTime > tripUpdateMaxAgeInSeconds) {
             return false;
         }
 

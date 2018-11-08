@@ -25,18 +25,12 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             return true;
         }
 
-        //TODO: Fix this for daylight saving time
         String[] tripStartTimeArray = tripUpdate.getTrip().getStartTime().split(":");
 
         if (tripStartTimeArray.length != 3) {
             log.error("Invalid start time for trip update");
             return false;
         }
-
-        LocalDate tripOperatingDayDate = LocalDate.parse(tripUpdate.getTrip().getStartDate(), DateTimeFormatter.BASIC_ISO_DATE);
-        OffsetDateTime tripStartTimeOffSetDateTime = OffsetDateTime.of(LocalDateTime.of(tripOperatingDayDate, LocalTime.MIDNIGHT), ZoneOffset.UTC);
-        long tripStartTimePosix = tripStartTimeOffSetDateTime.toEpochSecond() +
-                Long.parseLong(tripStartTimeArray[0]) * 60*60 + Long.parseLong(tripStartTimeArray [1]) * 60;
 
         long tripFirstStopTimeEventTime;
 
@@ -46,6 +40,7 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             tripFirstStopTimeEventTime = tripUpdate.getStopTimeUpdate(0).getArrival().getTime();
         }
 
+        long tripStartTimePosix = tripStartTimeToPosixTime(tripUpdate);
         //Filter out premature departures, where the departure time for the first StopTimeUpdate is more than the
         //configured amount of seconds before the scheduled departure time of the trip
         if (tripStartTimePosix - tripFirstStopTimeEventTime > tripUpdateMinTimeBeforeDeparture ) {
@@ -54,4 +49,42 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
 
         return true;
     }
+
+    static long tripStartTimeToPosixTime(GtfsRealtime.TripUpdate tripUpdate) {
+
+        String[] tripStartTimeArray = tripUpdate.getTrip().getStartTime().split(":");
+
+        boolean over24Hours = false;
+        if (Integer.parseInt(tripStartTimeArray[0]) > 23) {
+            over24Hours = true;
+        }
+
+        LocalTime tripStartTimeLocal;
+
+        if (!over24Hours) {
+            tripStartTimeLocal = LocalTime.parse(tripUpdate.getTrip().getStartTime());
+        } else {
+            int hours = Integer.parseInt(tripStartTimeArray[0]) - 24;
+            String hoursString;
+            if (hours > 9) {
+                hoursString = hours + "";
+            } else {
+                hoursString = "0" + hours;
+            }
+            tripStartTimeLocal = LocalTime.parse(hoursString + ":" + tripStartTimeArray[1] + ":" + tripStartTimeArray[2]);
+        }
+
+        LocalDate tripStartDateLocal = LocalDate.parse(tripUpdate.getTrip().getStartDate(), DateTimeFormatter.BASIC_ISO_DATE);
+        if (over24Hours) {
+            tripStartDateLocal = tripStartDateLocal.plusDays(1);
+        }
+
+        ZoneId zoneId = ZoneId.of("Europe/Helsinki");
+
+        long tripStartTimeEpoch = LocalDateTime.of(tripStartDateLocal, tripStartTimeLocal).atZone(zoneId).toInstant().getEpochSecond();
+
+        return tripStartTimeEpoch;
+    }
+
 }
+
