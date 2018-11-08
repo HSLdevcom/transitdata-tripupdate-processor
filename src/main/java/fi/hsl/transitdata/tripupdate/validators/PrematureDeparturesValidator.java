@@ -12,9 +12,11 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
     private static final Logger log = LoggerFactory.getLogger(PrematureDeparturesValidator.class);
 
     private long tripUpdateMinTimeBeforeDeparture;
+    private ZoneId zoneId;
 
-    public PrematureDeparturesValidator(long tripUpdateMinTimeBeforeDeparture) {
+    public PrematureDeparturesValidator(long tripUpdateMinTimeBeforeDeparture, String zoneIdString) {
         this.tripUpdateMinTimeBeforeDeparture = tripUpdateMinTimeBeforeDeparture;
+        this.zoneId = ZoneId.of(zoneIdString);
     }
 
     @Override
@@ -50,7 +52,7 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
         return true;
     }
 
-    static long tripStartTimeToPosixTime(GtfsRealtime.TripUpdate tripUpdate) {
+    long tripStartTimeToPosixTime(GtfsRealtime.TripUpdate tripUpdate) {
 
         String[] tripStartTimeArray = tripUpdate.getTrip().getStartTime().split(":");
 
@@ -78,8 +80,6 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
         if (over24Hours) {
             tripStartDateLocal = tripStartDateLocal.plusDays(1);
         }
-
-        ZoneId zoneId = ZoneId.of("Europe/Helsinki");
 
         long tripStartTimeEpoch = LocalDateTime.of(tripStartDateLocal, tripStartTimeLocal).atZone(zoneId).toInstant().getEpochSecond();
 

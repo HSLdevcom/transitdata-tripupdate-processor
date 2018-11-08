@@ -11,11 +11,13 @@ import static org.junit.Assert.assertEquals;
 
 public class PrematureDeparturesValidatorTest {
 
+    private static final String TIMEZONE = "Europe/Helsinki";
+
     @Test
     public void tripUpdateWithPrematureDepartureIsDiscarded() {
 
         //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         //2018-11-07T17:10:00 in Helsinki/Europe
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
@@ -32,7 +34,7 @@ public class PrematureDeparturesValidatorTest {
     public void tripUpdateWithPrematureArrivalIsDiscarded() {
 
         //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         //2018-11-07T17:10:00 in Helsinki/Europe
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
@@ -49,7 +51,7 @@ public class PrematureDeparturesValidatorTest {
     public void tripUpdateWithValidDepartureIsAccepted() {
 
         //More than three minutes is a premature prediction
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         //2018-11-07T17:10:00 in Helsinki/Europe
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
@@ -64,7 +66,7 @@ public class PrematureDeparturesValidatorTest {
     @Test
     public void tripUpdateStartTimeInDayTimeIsParsedCorrectly() {
 
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:10:00");
 
@@ -75,7 +77,7 @@ public class PrematureDeparturesValidatorTest {
     @Test
     public void tripUpdateStartTimeAfterMidnightIsParsedCorrectly() {
 
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         //2018-11-08T03:50:00
         GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "27:50:00");
@@ -87,7 +89,7 @@ public class PrematureDeparturesValidatorTest {
     @Test
     public void tripUpdateStartTimeJustAfterMidnightIsParsedCorrectly() {
 
-        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180);
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
 
         //2018-11-08T00:01:00
         GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "24:01:00");
