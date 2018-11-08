@@ -16,7 +16,7 @@ public class Main {
 
             PulsarApplicationContext context = app.getContext();
 
-            MessageRouter router = new MessageRouter(context);
+            MessageRouter router = new MessageRouter(context, config);
 
             log.info("Start handling the messages");
             app.launchWithHandler(router);

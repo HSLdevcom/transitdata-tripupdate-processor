@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
@@ -11,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
@@ -30,7 +33,10 @@ public abstract class BaseProcessor implements IMessageProcessor {
     protected abstract PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException;
 
     @Override
-    public void processMessage(Message msg) {
+    public GtfsRealtime.TripUpdate processMessage(Message msg) {
+
+        GtfsRealtime.TripUpdate tripUpdate = null;
+
         try {
             PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
             // Create stop event
@@ -38,17 +44,19 @@ public abstract class BaseProcessor implements IMessageProcessor {
             StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
 
             // Create TripUpdate and send it out
-            tripProcessor.processStopEvent(msg.getKey(), stop);
+            tripUpdate = tripProcessor.processStopEvent(msg.getKey(), stop);
         }
         catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse ROIArrival from message payload", e);
         }
+
+        return tripUpdate;
     }
 
     @Override
     public boolean validateMessage(Message msg) {
         try {
-            if (validateRequiredProperties(msg)) {
+            if (validateRequiredProperties(msg.getProperties())) {
                 PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
                 return validate(common);
             }
@@ -62,19 +70,31 @@ public abstract class BaseProcessor implements IMessageProcessor {
         }
     }
 
-    private boolean validateRequiredProperties(Message msg) {
+    static boolean validateRequiredProperties(Map<String, String> properties) {
         final List<String> requiredProperties = Arrays.asList(
                 TransitdataProperties.KEY_ROUTE_NAME,
                 TransitdataProperties.KEY_DIRECTION,
                 TransitdataProperties.KEY_START_TIME,
                 TransitdataProperties.KEY_OPERATING_DAY
         );
+
+        if (properties == null) {
+            log.error("Message has no properties");
+            return false;
+        }
         for (String p: requiredProperties) {
-            if (!msg.hasProperty(p)) {
+            if (!properties.containsKey(p)) {
                 log.error("Message is missing required property " + p);
                 return false;
             }
         }
+
+        //Filter out trains. Currently route IDs for trains are 3001 and 3002.
+        Pattern trainPattern = Pattern.compile("^300(1|2)");
+        if (trainPattern.matcher(properties.get(TransitdataProperties.KEY_ROUTE_NAME)).find()) {
+            return false;
+        }
+
         return true;
     }
 
