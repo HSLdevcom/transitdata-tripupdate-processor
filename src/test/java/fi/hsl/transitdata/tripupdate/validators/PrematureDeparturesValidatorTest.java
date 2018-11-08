@@ -64,6 +64,22 @@ public class PrematureDeparturesValidatorTest {
     }
 
     @Test
+    public void tripUpdateValidInEuropeHelsinkiIsDiscardedWhenTimezoneIsUTC() {
+
+        //More than three minutes is a premature prediction
+        PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, "UTC");
+
+        //2018-11-07T17:10:00 in Helsinki/Europe
+        Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
+        stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
+
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:11:00", stopTimeUpdates);
+
+        assertEquals(false, validator.validate(tripUpdate));
+
+    }
+
+    @Test
     public void tripUpdateStartTimeInDayTimeIsParsedCorrectly() {
 
         PrematureDeparturesValidator validator = new PrematureDeparturesValidator(180, TIMEZONE);
