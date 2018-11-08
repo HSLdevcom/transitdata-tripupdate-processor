@@ -27,6 +27,8 @@ public class ITMockDataSource {
         String dvjId;
     }
 
+
+
     public static SourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime, long timestamp) {
         InternalMessages.TripCancellation.Builder builder = InternalMessages.TripCancellation.newBuilder();
         String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(startTime);

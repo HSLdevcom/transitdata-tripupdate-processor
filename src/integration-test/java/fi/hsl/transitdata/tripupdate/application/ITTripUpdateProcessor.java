@@ -1,5 +1,6 @@
 package fi.hsl.transitdata.tripupdate.application;
 
+import com.google.transit.realtime.GtfsRealtime;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import fi.hsl.common.config.ConfigParser;
@@ -118,20 +119,43 @@ public class ITTripUpdateProcessor {
                 Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, now);
+                validatePulsarProperties(received, dvjId, now);
 
+                GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
+                validateCancellationPayload(feedMessage, dvjId, now, route, direction, date.replace("-", ""), time);
                 logger.info("Message read back, all good");
+
+                assertEquals(1, context.source.getStats().getNumAcksReceived());
             }
         };
         testPulsar(logic);
     }
 
-    private void validatePulsarProperties(Message<byte[]> received, long eventTime) {
+    private void validatePulsarProperties(Message<byte[]> received, String dvjId, long eventTime) {
         assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
+        assertEquals(dvjId, received.getKey());
         //assertEquals(dvjId, received.getProperty(TransitdataProperties.KEY_DVJ_ID)); //TODO Should this exist?
         assertEquals(eventTime, received.getEventTime());
 
     }
+
+    private void validateCancellationPayload(GtfsRealtime.FeedMessage feedMessage,
+                                             String dvjId, long eventTime, String routeId, int direction,
+                                             String date, String time) {
+        assertNotNull(feedMessage);
+        assertEquals(1, feedMessage.getEntityCount());
+        GtfsRealtime.TripUpdate tripUpdate = feedMessage.getEntity(0).getTripUpdate();
+        assertEquals(0, tripUpdate.getStopTimeUpdateCount());
+        assertEquals(eventTime, tripUpdate.getTimestamp());
+
+        GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
+        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, trip.getScheduleRelationship());
+        assertEquals(routeId, trip.getRouteId());
+        assertEquals(direction, trip.getDirectionId());
+        assertEquals(date, trip.getStartDate());
+        assertEquals(time, trip.getStartTime());
+    }
+
 
     public void testPulsar(TestLogic logic) throws Exception {
 
