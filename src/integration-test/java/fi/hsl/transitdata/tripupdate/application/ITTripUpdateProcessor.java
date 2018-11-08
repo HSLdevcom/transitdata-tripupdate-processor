@@ -44,116 +44,127 @@ public class ITTripUpdateProcessor {
         }
     }
 
-    @Test
-    public void readConfig() {
-        defaultConfig();
-    }
-
-    private Config defaultConfig() {
-        Config config = ConfigParser.createConfig("integration-test.conf");
+    private Config defaultConfig(String configFileName) {
+        Config config = ConfigParser.createConfig(configFileName);
         assertNotNull(config);
         return config;
     }
 
-    private Config defaultConfigWithOverride(String key, Object value) {
+    private Config defaultConfigWithOverride(String configFileName, String key, Object value) {
         Map<String, Object> overrides = new HashMap<>();
         overrides.put(key, value);
-        return defaultConfigWithOverrides(overrides);
+        return defaultConfigWithOverrides(configFileName, overrides);
     }
 
 
-    private Config defaultConfigWithOverrides(Map<String, Object> overrides) {
+    private Config defaultConfigWithOverrides(String configFileName, Map<String, Object> overrides) {
         Config configOverrides = ConfigFactory.parseMap(overrides);
-        return ConfigParser.mergeConfigs(defaultConfig(), configOverrides);
+        return ConfigParser.mergeConfigs(defaultConfig(configFileName), configOverrides);
     }
 
-    @Test
-    public void testPulsar() throws Exception {
-        Config base = defaultConfig();
+    private PulsarApplication createPulsarApp(String config) throws Exception {
+        logger.info("Creating Pulsar Application for config " + config);
 
+        Config base = defaultConfig(config);
+        assertNotNull(base);
         PulsarApplication app = PulsarMockApplication.newInstance(base, null, pulsar);
         assertNotNull(app);
-
-        logger.info("Pulsar Application created, testing to send a message");
-
-        final String payload = "Test-message";
-
-        Producer<byte[]> producer = app.getContext().getProducer();
-        producer.send(payload.getBytes());
-
-        logger.info("Message sent, reading it back");
-
-        Consumer<byte[]> consumer = app.getContext().getConsumer();
-        readAndValidateMsg(consumer, new HashSet<>(Arrays.asList(payload)));
-
-        assertTrue(consumer.isConnected());
-        assertTrue(producer.isConnected());
-
-        app.close();
-
-        assertFalse(consumer.isConnected());
-        assertFalse(producer.isConnected());
-
+        return app;
     }
 
-    private static String formatTopicName(String topic) {
-        return "persistent://" + TENANT + "/" + NAMESPACE + "/" + topic;
+    class TestContext {
+        Producer<byte[]> source;
+        Consumer<byte[]> sink;
+        PulsarApplication testApp;
     }
-    /*
-    @Test
-    public void testPulsarWithMultipleTopics() throws Exception {
-        Map<String, Object> o1 = new HashMap<>();
-        o1.put("pulsar.consumer.enabled", false);
-        o1.put("redis.enabled", false);
-        o1.put("pulsar.producer.topic", formatTopicName("test-1"));
-        Config producer1Config = defaultConfigWithOverrides(o1);
-
-        PulsarApplication app = PulsarMockApplication.newInstance(producer1Config, null, pulsar);
-        assertNotNull(app);
-
-        Producer<byte[]> producer = app.getContext().getProducer();
-
-        //Create a second producer but bind into different topic
-        Config producer2Config = defaultConfigWithOverride("pulsar.producer.topic", formatTopicName("test-2"));
-        Producer<byte[]> secondProducer = app.createProducer(app.client, producer2Config);
-
-        logger.info("Multi-topic Pulsar Application created, testing to send a message");
-
-        //Next create the consumer
-        Map<String, Object> overrides = new HashMap<>();
-        overrides.put("pulsar.consumer.multipleTopics", true);
-        overrides.put("pulsar.consumer.topicsPattern", formatTopicName("test-(1|2)"));
-        Config consumerConfig = defaultConfigWithOverrides(overrides);
-        Consumer<byte[]> consumer = app.createConsumer(app.client, consumerConfig);
-
-        logger.debug("Consumer topic: " + consumer.getTopic());
-
-        final String firstPayload = "to-topic1";
-        producer.send(firstPayload.getBytes());
-
-        final String secondPayload = "to-topic2";
-        secondProducer.send(secondPayload.getBytes());
-
-        Set<String> correctPayloads = new HashSet<>(Arrays.asList(firstPayload, secondPayload));
-        readAndValidateMsg(consumer, correctPayloads);
-
-        secondProducer.close();
-        app.close();
-    }*/
-
-    private void readAndValidateMsg(Consumer<byte[]> consumer, Set<String> correctPayloads) throws Exception {
-        logger.info("Reading messages from Pulsar");
-        Set<String> received = new HashSet<>();
-        //Pulsar consumer doesn't guarantee in which order messages come when reading multiple topics.
-        //They should be in order when reading from the same topic.
-        while (received.size() < correctPayloads.size()) {
-            Message<byte[]> msg = consumer.receive(5, TimeUnit.SECONDS);
-            assertNotNull(msg);
-            String receivedPayload = new String(msg.getData(), Charset.defaultCharset());
-            logger.info("Received: " + receivedPayload);
-            received.add(receivedPayload);
+    abstract class TestLogic {
+        public void test(TestContext context) {
+            try {
+                testImpl(context);
+            }
+            catch (Exception e) {
+                logger.error("Test failed!", e);
+                assertTrue(false);
+            }
         }
-        assertEquals(correctPayloads, received);
+
+        //Perform your test and assertions in here
+        abstract void testImpl(TestContext context) throws Exception;
+    }
+
+    @Test
+    public void testSimpleMessage() throws Exception {
+        TestLogic logic = new TestLogic() {
+            @Override
+            public void testImpl(TestContext context) throws Exception {
+
+                final String payload = "Test-message";
+                context.source.send(payload.getBytes());
+
+                logger.info("Message sent, reading it back");
+
+
+                Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
+                assertNotNull(received);
+
+
+                assertArrayEquals(payload.getBytes(), received.getData());
+                logger.info("Message read back, all good");
+            }
+        };
+        testPulsar(logic);
+    }
+
+    public void testPulsar(TestLogic logic) throws Exception {
+
+        logger.info("Initializing test resources");
+        PulsarApplication sourceApp = createPulsarApp("integration-test-source.conf");
+        Producer<byte[]> source = sourceApp.getContext().getProducer();
+        assertNotNull(source);
+        assertTrue(source.isConnected());
+
+        PulsarApplication sinkApp = createPulsarApp("integration-test-sink.conf");
+        Consumer<byte[]> sink = sinkApp.getContext().getConsumer();
+        assertNotNull(sink);
+        assertTrue(sink.isConnected());
+
+        PulsarApplication testApp = createPulsarApp("integration-test.conf");
+
+        TestContext context = new TestContext();
+        context.sink = sink;
+        context.source = source;
+        context.testApp = testApp;
+
+        Thread t = new Thread() {
+            public void run() {
+                try {
+                    testApp.launchWithHandler(new MessageRouter(testApp.getContext()));
+                }
+                catch (Exception e) {
+                    //This is expected after test is closed
+                    logger.info("Pulsar application throws, as expected. " + e.getMessage());
+                }
+            }
+        };
+        t.start();
+
+        logger.info("Test setup done, calling test method");
+
+        logic.test(context);
+
+        logger.info("Test done, all good");
+
+        testApp.close(); // This exits the thread-loop above also
+        t.join(10000); // Wait for thread to exit. Use timeout to prevent deadlock for whole the whole test class.
+        assertFalse(t.isAlive());
+
+        logger.info("Pulsar read thread finished");
+
+        sourceApp.close();
+        sinkApp.close();
+
+        assertFalse(source.isConnected());
+        assertFalse(sink.isConnected());
     }
 
 }
