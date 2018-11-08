@@ -6,9 +6,9 @@ import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
-import fi.hsl.transitdata.tripupdate.filters.ITripUpdateValidator;
-import fi.hsl.transitdata.tripupdate.filters.ValidatePrematureDepartures;
-import fi.hsl.transitdata.tripupdate.filters.ValidateTripUpdateMaxAge;
+import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
+import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
+import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
 import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 
 public class MessageRouter implements IMessageHandler {
@@ -56,8 +55,8 @@ public class MessageRouter implements IMessageHandler {
 
         List<ITripUpdateValidator> tripUpdateValidators = new ArrayList<>();
 
-        tripUpdateValidators.add(new ValidateTripUpdateMaxAge(config.getDuration("filter.tripUpdateMaxAge", TimeUnit.SECONDS)));
-        tripUpdateValidators.add(new ValidatePrematureDepartures(config.getDuration("filter.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("filter.tripUpdateMaxAge", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("filter.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS)));
 
         return tripUpdateValidators;
 

@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate.filters;
+package fi.hsl.transitdata.tripupdate.validators;
 
 import com.google.transit.realtime.GtfsRealtime;
 

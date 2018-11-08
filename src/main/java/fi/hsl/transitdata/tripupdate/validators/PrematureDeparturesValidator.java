@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.tripupdate.filters;
+package fi.hsl.transitdata.tripupdate.validators;
 
 import com.google.transit.realtime.GtfsRealtime;
 import org.slf4j.Logger;
@@ -7,13 +7,13 @@ import org.slf4j.LoggerFactory;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 
-public class ValidatePrematureDepartures implements ITripUpdateValidator {
+public class PrematureDeparturesValidator implements ITripUpdateValidator {
 
-    private static final Logger log = LoggerFactory.getLogger(ValidatePrematureDepartures.class);
+    private static final Logger log = LoggerFactory.getLogger(PrematureDeparturesValidator.class);
 
     private long tripUpdateMinTimeBeforeDeparture;
 
-    public ValidatePrematureDepartures(long tripUpdateMinTimeBeforeDeparture) {
+    public PrematureDeparturesValidator(long tripUpdateMinTimeBeforeDeparture) {
         this.tripUpdateMinTimeBeforeDeparture = tripUpdateMinTimeBeforeDeparture;
     }
 

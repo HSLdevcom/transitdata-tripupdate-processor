@@ -1,12 +1,12 @@
-package fi.hsl.transitdata.tripupdate.filters;
+package fi.hsl.transitdata.tripupdate.validators;
 
 import com.google.transit.realtime.GtfsRealtime;
 
-public class ValidateTripUpdateMaxAge implements ITripUpdateValidator {
+public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
 
     private long tripUpdateMaxAgeInSeconds;
 
-    public ValidateTripUpdateMaxAge(long tripUpdateMaxAgeInSeconds) {
+    public TripUpdateMaxAgeValidator(long tripUpdateMaxAgeInSeconds) {
         this.tripUpdateMaxAgeInSeconds = tripUpdateMaxAgeInSeconds;
     }
 
