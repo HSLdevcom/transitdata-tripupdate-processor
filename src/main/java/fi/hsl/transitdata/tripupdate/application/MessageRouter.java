@@ -55,8 +55,8 @@ public class MessageRouter implements IMessageHandler {
 
         List<ITripUpdateValidator> tripUpdateValidators = new ArrayList<>();
 
-        tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("filter.tripUpdateMaxAge", TimeUnit.SECONDS)));
-        tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("filter.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("validator.tripUpdateMaxAge", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("validator.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS)));
 
         return tripUpdateValidators;
 
