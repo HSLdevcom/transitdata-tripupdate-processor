@@ -5,6 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
@@ -71,6 +72,7 @@ public class TripUpdateProcessor {
         producer.newMessage()
                 .key(messageKey)
                 .eventTime(timestamp)
+                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
                 .value(feedMessage.toByteArray())
                 .sendAsync()
                 .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
