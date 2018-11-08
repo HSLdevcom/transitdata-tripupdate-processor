@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public abstract class BaseProcessor implements IMessageProcessor {
@@ -55,7 +56,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
     @Override
     public boolean validateMessage(Message msg) {
         try {
-            if (validateRequiredProperties(msg)) {
+            if (validateRequiredProperties(msg.getProperties())) {
                 PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
                 return validate(common);
             }
@@ -69,15 +70,20 @@ public abstract class BaseProcessor implements IMessageProcessor {
         }
     }
 
-    private boolean validateRequiredProperties(Message msg) {
+    static boolean validateRequiredProperties(Map<String, String> properties) {
         final List<String> requiredProperties = Arrays.asList(
                 TransitdataProperties.KEY_ROUTE_NAME,
                 TransitdataProperties.KEY_DIRECTION,
                 TransitdataProperties.KEY_START_TIME,
                 TransitdataProperties.KEY_OPERATING_DAY
         );
+
+        if (properties == null) {
+            log.error("Message has no properties");
+            return false;
+        }
         for (String p: requiredProperties) {
-            if (!msg.hasProperty(p)) {
+            if (!properties.containsKey(p)) {
                 log.error("Message is missing required property " + p);
                 return false;
             }
@@ -85,7 +91,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
 
         //Filter out trains. Currently route IDs for trains are 3001 and 3002.
         Pattern trainPattern = Pattern.compile("^300(1|2)");
-        if (trainPattern.matcher(msg.getProperty(TransitdataProperties.KEY_ROUTE_NAME)).find()) {
+        if (trainPattern.matcher(properties.get(TransitdataProperties.KEY_ROUTE_NAME)).find()) {
             return false;
         }
 
