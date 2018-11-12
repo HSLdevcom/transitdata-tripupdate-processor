@@ -47,7 +47,7 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public void processStopEvent(final String messageKey, StopEvent stopEvent) {
+    public void processStopEvent(StopEvent stopEvent) {
         try {
             StopTimeUpdate latest = updateStopTimeUpdateCache(stopEvent);
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(stopEvent.getDatedVehicleJourneyId());
@@ -58,19 +58,19 @@ public class TripUpdateProcessor {
             final TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEvent, validated);
             //According to GTFS spec, timestamp identifies the moment when the content of this feed has been created in POSIX time
             final long timestamp = tripUpdate.getTimestamp();
-            final String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
+            final String dvjId = Long.toString(stopEvent.getDatedVehicleJourneyId());
 
-            sendTripUpdate(messageKey, tripUpdate, id, timestamp);
+            sendTripUpdate(tripUpdate, dvjId, timestamp);
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
 
     }
 
-    private void sendTripUpdate(final String messageKey, final TripUpdate tripUpdate, final String dvjId, final long timestamp) {
+    private void sendTripUpdate(final TripUpdate tripUpdate, final String dvjId, final long timestamp) {
         FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, timestamp);
         producer.newMessage()
-                .key(messageKey)
+                .key(dvjId)
                 .eventTime(timestamp)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
                 .value(feedMessage.toByteArray())
@@ -81,13 +81,12 @@ public class TripUpdateProcessor {
     }
 
     public void processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
-        //Message key is now DVJ-ID in cancellation messages, however it's DVJ-ID + JPP-ID in Stop Events.
-        //TODO fix, make consistent.
+        //Message key is DVJ-ID in cancellation messages
         Long dvjId = Long.parseLong(messageKey);
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
             TripUpdate update = updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp, tripCancellation);
-            sendTripUpdate(messageKey, update, dvjId.toString(), messageTimestamp);
+            sendTripUpdate(update, dvjId.toString(), messageTimestamp);
         }
         else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the

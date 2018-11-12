@@ -38,7 +38,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
 
             // Create TripUpdate and send it out
-            tripProcessor.processStopEvent(msg.getKey(), stop);
+            tripProcessor.processStopEvent(stop);
         }
         catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse ROIArrival from message payload", e);

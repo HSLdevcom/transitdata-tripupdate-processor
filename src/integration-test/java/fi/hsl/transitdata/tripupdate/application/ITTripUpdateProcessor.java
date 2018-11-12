@@ -134,7 +134,6 @@ public class ITTripUpdateProcessor {
     private void validatePulsarProperties(Message<byte[]> received, String dvjId, long eventTime) {
         assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
         assertEquals(dvjId, received.getKey());
-        //assertEquals(dvjId, received.getProperty(TransitdataProperties.KEY_DVJ_ID)); //TODO Should this exist?
         assertEquals(eventTime, received.getEventTime());
 
     }
