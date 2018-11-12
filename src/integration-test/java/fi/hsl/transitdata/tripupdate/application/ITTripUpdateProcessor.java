@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import org.apache.pulsar.client.api.Message;
 import org.junit.Test;
 
@@ -9,39 +10,69 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
+
+    final String dvjId = "1234567890";
+    final String route = "757";
+    final int direction = 1;
+    final String date = "2020-12-24";
+    final String time = "18:00:00";
+    final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
 
     @Test
     public void testCancellation() throws Exception {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
-                final String dvjId = "1234567890";
-                final String route = "757";
-                final int direction = 1;
-                final String date = "2020-12-24";
-                final String time = "18:00:00";
-                final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
                 final long now = System.currentTimeMillis();
 
-                ITMockDataSource.SourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now);
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
-                Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
+                Message<byte[]> received = readOutputMessage(context);
                 assertNotNull(received);
 
                 validatePulsarProperties(received, dvjId, now);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, dvjId, now, route, direction, date.replace("-", ""), time);
+                final String dateInGtfsFormat = date.replace("-", "");
+                validateCancellationPayload(feedMessage, dvjId, now, route, direction, dateInGtfsFormat, time);
                 logger.info("Message read back, all good");
 
-                assertEquals(1, context.source.getStats().getNumAcksReceived());
+                validateAcks(1, context);
             }
         };
         testPulsar(logic);
+    }
+
+
+    @Test
+    public void testCancellationWithRunningStatus() throws Exception {
+        TestLogic logic = new TestLogic() {
+            @Override
+            public void testImpl(TestContext context) throws Exception {
+                final long now = System.currentTimeMillis();
+
+                final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now, runningStatus);
+                ITMockDataSource.sendPulsarMessage(context.source, msg);
+                logger.info("Message sent, reading it back");
+
+                Message<byte[]> received = readOutputMessage(context);
+                //There should not be any output for Running-status since it's not supported yet
+                assertNull(received);
+                validateAcks(1, context); //sender should still get acks.
+            }
+        };
+        testPulsar(logic);
+    }
+
+
+    private void validateAcks(int numberOfMessagesSent, TestContext context) {
+        assertEquals(numberOfMessagesSent, context.source.getStats().getNumAcksReceived());
     }
 
     private void validateCancellationPayload(GtfsRealtime.FeedMessage feedMessage,

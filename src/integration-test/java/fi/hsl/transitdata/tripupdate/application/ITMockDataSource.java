@@ -27,9 +27,22 @@ public class ITMockDataSource {
         String dvjId;
     }
 
+    static class CancellationSourceMessage extends SourceMessage {
+        InternalMessages.TripCancellation cancellation;
 
+        public CancellationSourceMessage(InternalMessages.TripCancellation cancellation, String dvjId, long timestamp) {
+            super(cancellation.toByteArray(), TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation, dvjId, timestamp);
+            this.cancellation = cancellation;
+        }
+    }
 
-    public static SourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime, long timestamp) {
+    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime, long timestamp) {
+        return newCancellationMessage(dvjId, routeId, direction, startTime, timestamp, InternalMessages.TripCancellation.Status.CANCELED);
+    }
+
+    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction,
+                                                                   LocalDateTime startTime, long timestamp,
+                                                                   InternalMessages.TripCancellation.Status status) {
         InternalMessages.TripCancellation.Builder builder = InternalMessages.TripCancellation.newBuilder();
         String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(startTime);
         String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(startTime);
@@ -40,11 +53,10 @@ public class ITMockDataSource {
         builder.setStartTime(time);
         //Version number is defined in the proto file as default value but we still need to set it since it's a required field
         builder.setSchemaVersion(builder.getSchemaVersion());
-        builder.setStatus(InternalMessages.TripCancellation.Status.CANCELED);
+        builder.setStatus(status);
 
         final InternalMessages.TripCancellation cancellation = builder.build();
-        byte[] data = cancellation.toByteArray();
-        return new SourceMessage(data, TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation, dvjId, timestamp);
+        return new CancellationSourceMessage(cancellation, dvjId, timestamp);
     }
 
     public static void sendPulsarMessage(Producer<byte[]> producer, SourceMessage msg) throws PulsarClientException {

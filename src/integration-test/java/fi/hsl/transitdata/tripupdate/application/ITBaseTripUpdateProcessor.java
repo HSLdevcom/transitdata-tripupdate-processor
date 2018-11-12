@@ -12,6 +12,7 @@ import fi.hsl.common.transitdata.TransitdataProperties;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.PulsarClientException;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -73,6 +74,16 @@ public class ITBaseTripUpdateProcessor {
         assertNotNull(app);
         return app;
     }
+
+
+    Message<byte[]> readOutputMessage(TestContext context) throws PulsarClientException {
+        Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
+        if (received != null) {
+            context.sink.acknowledge(received);
+        }
+        return received;
+    }
+
 
     class TestContext {
         Producer<byte[]> source;
