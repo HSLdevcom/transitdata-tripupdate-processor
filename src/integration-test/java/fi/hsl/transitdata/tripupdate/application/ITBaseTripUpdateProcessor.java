@@ -81,7 +81,9 @@ public class ITBaseTripUpdateProcessor {
 
 
     Message<byte[]> readOutputMessage(TestContext context) throws PulsarClientException {
-        Message<byte[]> received = context.sink.receive(5, TimeUnit.SECONDS);
+        //Our Pipeline throughput should be few milliseconds but let's not assume it here, can create unwanted assertions.
+        //Rather test performance separately with load tests.
+        Message<byte[]> received = context.sink.receive(500, TimeUnit.MILLISECONDS);
         if (received != null) {
             context.sink.acknowledge(received);
         }
