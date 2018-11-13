@@ -6,7 +6,6 @@ import org.apache.pulsar.client.api.Message;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -16,19 +15,19 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
 
     final String dvjId = "1234567890";
     final String route = "757";
-    final int direction = 1;
+    final int direction = 2;
     final String date = "2020-12-24";
     final String time = "18:00:00";
     final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
 
     @Test
-    public void testCancellation() throws Exception {
+    public void testValidCancellation() throws Exception {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
                 final long now = System.currentTimeMillis();
 
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now);
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
@@ -38,8 +37,7 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 validatePulsarProperties(received, dvjId, now);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                final String dateInGtfsFormat = date.replace("-", "");
-                validateCancellationPayload(feedMessage, dvjId, now, route, direction, dateInGtfsFormat, time);
+                validateCancellationPayload(feedMessage, dvjId, now, route, direction, dateTime);
                 logger.info("Message read back, all good");
 
                 validateAcks(1, context);
@@ -48,17 +46,38 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
         testPulsar(logic);
     }
 
+    @Test
+    public void testCancellationWithGtfsRtDirection() throws Exception {
+        //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 0, dateTime);
+        testInvalidInput(msg);
+    }
+
+    @Test
+    public void testCancellationWithInvalidDirection() throws Exception {
+        //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 10, dateTime);
+        testInvalidInput(msg);
+    }
 
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
+        final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, runningStatus);
+        testInvalidInput(msg);
+    }
+
+    /**
+     * Convenience method for running tests that should always be filtered by the TripUpdateProcessor,
+     * meaning no Gtfs-RT should ever be received. However we should get an ack to producer.
+     *
+     * @throws Exception
+     */
+    private void testInvalidInput(final ITMockDataSource.SourceMessage somethingWrongWithPayload) throws Exception {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
-                final long now = System.currentTimeMillis();
-
-                final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, now, runningStatus);
-                ITMockDataSource.sendPulsarMessage(context.source, msg);
+                ITMockDataSource.sendPulsarMessage(context.source, somethingWrongWithPayload);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = readOutputMessage(context);
@@ -76,8 +95,7 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
     }
 
     private void validateCancellationPayload(GtfsRealtime.FeedMessage feedMessage,
-                                     String dvjId, long eventTime, String routeId, int direction,
-                                     String date, String time) {
+                                     String dvjId, long eventTime, String routeId, int direction, LocalDateTime eventTimeLocal) {
         assertNotNull(feedMessage);
         assertEquals(1, feedMessage.getEntityCount());
         GtfsRealtime.TripUpdate tripUpdate = feedMessage.getEntity(0).getTripUpdate();
@@ -88,8 +106,12 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
         assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, trip.getScheduleRelationship());
         assertEquals(routeId, trip.getRouteId());
         assertEquals(direction, trip.getDirectionId());
-        assertEquals(date, trip.getStartDate());
-        assertEquals(time, trip.getStartTime());
+
+        String localDate = gtfsRtDatePattern.format(eventTimeLocal);
+        String localTime = gtfsRtTimePattern.format(eventTimeLocal);
+
+        assertEquals(localDate, trip.getStartDate());
+        assertEquals(localTime, trip.getStartTime());
     }
 
 }

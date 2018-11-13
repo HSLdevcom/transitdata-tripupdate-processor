@@ -36,13 +36,16 @@ public class ITMockDataSource {
         }
     }
 
-    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime, long timestamp) {
-        return newCancellationMessage(dvjId, routeId, direction, startTime, timestamp, InternalMessages.TripCancellation.Status.CANCELED);
+    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime) {
+        return newCancellationMessage(dvjId, routeId, direction, startTime, InternalMessages.TripCancellation.Status.CANCELED);
     }
 
     public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction,
-                                                                   LocalDateTime startTime, long timestamp,
+                                                                   LocalDateTime startTime,
                                                                    InternalMessages.TripCancellation.Status status) {
+
+        final long timestamp = System.currentTimeMillis();
+
         InternalMessages.TripCancellation.Builder builder = InternalMessages.TripCancellation.newBuilder();
         String date = DateTimeFormatter.ofPattern("yyyyMMdd").format(startTime);
         String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(startTime);

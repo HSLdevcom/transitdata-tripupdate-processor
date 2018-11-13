@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PulsarContainer;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,9 @@ public class ITBaseTripUpdateProcessor {
 
     private static final String TENANT = "hsl";
     private static final String NAMESPACE = "transitdata";
+
+    final static DateTimeFormatter gtfsRtDatePattern = DateTimeFormatter.ofPattern("yyyyMMdd");
+    final static DateTimeFormatter gtfsRtTimePattern =  DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @ClassRule
     public static PulsarContainer pulsar = MockContainers.newPulsarContainer();

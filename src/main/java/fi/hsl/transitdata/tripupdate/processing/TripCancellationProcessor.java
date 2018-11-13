@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import org.apache.pulsar.client.api.Message;
@@ -25,14 +26,18 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
             if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() &&
                 tripCancellation.hasStartDate() && tripCancellation.hasStartTime()) {
-                return true;
-            }
 
+                boolean valid = true;
+
+                int directionId = tripCancellation.getDirectionId();
+                valid &= (directionId == 1 || directionId == 2);
+
+                return valid;
+            }
         } catch (InvalidProtocolBufferException e) {
             log.error("TripCancellation message could not be parsed: " + e.getMessage());
             return false;
         }
-
         return false;
     }
 
