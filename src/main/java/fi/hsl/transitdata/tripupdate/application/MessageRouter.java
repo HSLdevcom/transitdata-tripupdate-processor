@@ -1,33 +1,44 @@
 package fi.hsl.transitdata.tripupdate.application;
 
+import com.google.transit.realtime.GtfsRealtime;
+import com.typesafe.config.Config;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
+import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
+import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
+import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
 import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.Producer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 
 public class MessageRouter implements IMessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
 
     private Map<ProtobufSchema, IMessageProcessor> processors = new HashMap<>();
+    private List<ITripUpdateValidator> tripUpdateValidators;
 
     private Consumer<byte[]> consumer;
-
+    private Producer<byte[]> producer;
+    private Config config;
 
     public MessageRouter(PulsarApplicationContext context) {
         consumer = context.getConsumer();
+        producer = context.getProducer();
+        this.config = context.getConfig();
+        tripUpdateValidators = registerTripUpdateValidators();
         registerHandlers(context);
     }
 
@@ -38,6 +49,18 @@ public class MessageRouter implements IMessageHandler {
         processors.put(ProtobufSchema.PubtransRoiArrival, new ArrivalProcessor(tripUpdateProcessor));
         processors.put(ProtobufSchema.PubtransRoiDeparture, new DepartureProcessor(tripUpdateProcessor));
         processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
+    }
+
+    private List<ITripUpdateValidator> registerTripUpdateValidators() {
+
+        List<ITripUpdateValidator> tripUpdateValidators = new ArrayList<>();
+
+        tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("validator.tripUpdateMaxAge", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("validator.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS),
+                config.getString("validator.timezone")));
+
+        return tripUpdateValidators;
+
     }
 
     private Optional<ProtobufSchema> parseProtobufSchema(Message received) {
@@ -60,7 +83,17 @@ public class MessageRouter implements IMessageHandler {
                 IMessageProcessor processor = processors.get(schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
-                        processor.processMessage(received);
+                        GtfsRealtime.TripUpdate tripUpdate = processor.processMessage(received);
+
+                        boolean tripUpdateIsValid = true;
+
+                        for (ITripUpdateValidator validator : tripUpdateValidators) {
+                            tripUpdateIsValid = tripUpdateIsValid && validator.validate(tripUpdate);
+                        }
+
+                        if (tripUpdateIsValid) {
+                            sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID));
+                        }
                     }
                     else {
                         log.warn("Errors with message payload, ignoring.");
@@ -77,12 +110,22 @@ public class MessageRouter implements IMessageHandler {
                         return null;
                     })
                     .thenRun(() -> {});
-
         }
         catch (Exception e) {
             log.error("Exception while handling message", e);
         }
-
     }
 
+    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId) {
+        GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
+        producer.newMessage()
+                .key(dvjId)
+                .eventTime(tripUpdate.getTimestamp())
+                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
+                .value(feedMessage.toByteArray())
+                .sendAsync()
+                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
+                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+
+    }
 }

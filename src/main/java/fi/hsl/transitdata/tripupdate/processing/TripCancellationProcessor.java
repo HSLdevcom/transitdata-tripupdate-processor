@@ -1,7 +1,7 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import fi.hsl.common.transitdata.TransitdataProperties;
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import org.apache.pulsar.client.api.Message;
@@ -42,13 +42,18 @@ public class TripCancellationProcessor implements IMessageProcessor {
     }
 
     @Override
-    public void processMessage(Message msg) {
+    public GtfsRealtime.TripUpdate processMessage(Message msg) {
+
+        GtfsRealtime.TripUpdate tripUpdate = null;
+
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
         }
+
+        return tripUpdate;
 
     }
 }

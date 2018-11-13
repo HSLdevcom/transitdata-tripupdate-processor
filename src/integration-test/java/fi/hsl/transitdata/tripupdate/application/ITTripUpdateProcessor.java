@@ -25,8 +25,6 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
-                final long now = System.currentTimeMillis();
-
                 ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
@@ -34,10 +32,10 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 Message<byte[]> received = readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, dvjId, now);
+                validatePulsarProperties(received, dvjId, msg.timestamp);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, dvjId, now, route, direction, dateTime);
+                validateCancellationPayload(feedMessage, dvjId, msg.timestamp, route, direction, dateTime);
                 logger.info("Message read back, all good");
 
                 validateAcks(1, context);

@@ -94,4 +94,51 @@ public class MockDataFactory {
 
         return commonBuilder.build();
     }
+
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(String stopId, long arrivalTime,
+                                                                         long departureTime) {
+
+        GtfsRealtime.TripUpdate.StopTimeEvent arrival = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setTime(arrivalTime)
+                .build();
+
+        GtfsRealtime.TripUpdate.StopTimeEvent departure = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setTime(departureTime)
+                .build();
+
+        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+
+        if (arrivalTime != 0) {
+            stopTimeUpdateBuilder.setArrival(arrival);
+        }
+        if (departureTime != 0) {
+            stopTimeUpdateBuilder.setDeparture(departure);
+        }
+
+        return stopTimeUpdateBuilder.setStopId(stopId).build();
+    }
+
+    public static GtfsRealtime.TripUpdate mockTripUpdate(String routeId, int directionId,
+                                                      String startDate, String startTime,
+                                                      Iterable<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdateList) {
+
+        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId(routeId)
+                .setDirectionId(directionId)
+                .setStartDate(startDate)
+                .setStartTime(startTime)
+                .build();
+
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder().setTrip(tripDescriptor);
+
+        if (stopTimeUpdateList != null) {
+            tripUpdateBuilder.addAllStopTimeUpdate(stopTimeUpdateList);
+        }
+
+        return tripUpdateBuilder.build();
+    }
+
+    public static GtfsRealtime.TripUpdate mockTripUpdate(String routeId, int directionId, String startDate, String startTime) {
+        return mockTripUpdate(routeId, directionId, startDate, startTime, null);
+    }
 }
