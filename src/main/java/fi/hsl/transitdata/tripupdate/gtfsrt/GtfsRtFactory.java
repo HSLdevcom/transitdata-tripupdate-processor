@@ -4,10 +4,16 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class GtfsRtFactory {
 
     public static final int DIRECTION_ID_OUTBOUND = 0;
     public static final int DIRECTION_ID_INBOUND = 1;
+
+    //Discard the last character of the route name when it is a number, and trim the possible trailing whitespace
+    public static final String ROUTE_NUMBER_REMOVAL_REGEX = "(\\d{4}[a-zA-Z]{0,2})";
 
     private GtfsRtFactory() {}
 
@@ -71,8 +77,13 @@ public class GtfsRtFactory {
 
     public static GtfsRealtime.TripUpdate newTripUpdate(StopEvent event) {
 
+        Pattern routePattern = Pattern.compile(ROUTE_NUMBER_REMOVAL_REGEX);
+        Matcher matcher = routePattern.matcher(event.getRouteData().getRouteName());
+        matcher.find();
+        String parsedRouteName = matcher.group(1);
+
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(event.getRouteData().getRouteName())
+                .setRouteId(parsedRouteName)
                 .setDirectionId(event.getRouteData().getDirection())
                 .setStartDate(event.getRouteData().getOperatingDay())
                 .setStartTime(event.getRouteData().getStartTime())
@@ -87,8 +98,13 @@ public class GtfsRtFactory {
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestamp) {
 
+        Pattern routePattern = Pattern.compile(ROUTE_NUMBER_REMOVAL_REGEX);
+        Matcher matcher = routePattern.matcher(cancellation.getRouteId());
+        matcher.find();
+        String parsedRouteName = matcher.group(1);
+
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(cancellation.getRouteId())
+                .setRouteId(parsedRouteName)
                 .setDirectionId(cancellation.getDirectionId())
                 .setStartDate(cancellation.getStartDate())
                 .setStartTime(cancellation.getStartTime())
@@ -101,6 +117,4 @@ public class GtfsRtFactory {
 
         return tripUpdateBuilder.build();
     }
-
-
 }
