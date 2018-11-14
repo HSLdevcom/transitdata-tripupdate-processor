@@ -129,7 +129,7 @@ public class TripUpdateProcessor {
         TripUpdate tripUpdate = previousTripUpdate.toBuilder()
                 .clearStopTimeUpdate()
                 .addAllStopTimeUpdate(stopTimeUpdates)
-                .setTimestamp(latest.getLastModifiedTimestamp())
+                .setTimestamp(latest.getLastModifiedTimestamp(TimeUnit.SECONDS))
                 .build();
 
         tripUpdateCache.put(dvjId, tripUpdate);
@@ -138,11 +138,11 @@ public class TripUpdateProcessor {
     }
 
     private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId,
-                                                             long messageTimestamp,
+                                                             long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
         if (previousTripUpdate == null) {
-            previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestamp);
+            previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestampMs);
         }
 
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
@@ -152,7 +152,7 @@ public class TripUpdateProcessor {
         TripUpdate newTripUpdate = previousTripUpdate.toBuilder()
                 .setTrip(tripDescriptor)
                 .clearStopTimeUpdate()
-                .setTimestamp(messageTimestamp)
+                .setTimestamp(TimeUnit.SECONDS.convert(messageTimestampMs, TimeUnit.MILLISECONDS))
                 .build();
 
         tripUpdateCache.put(dvjId, newTripUpdate);

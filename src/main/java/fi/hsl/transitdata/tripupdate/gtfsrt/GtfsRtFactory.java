@@ -4,6 +4,8 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
+import java.util.concurrent.TimeUnit;
+
 public class GtfsRtFactory {
 
     public static final int DIRECTION_ID_OUTBOUND = 0;
@@ -80,12 +82,12 @@ public class GtfsRtFactory {
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
-                .setTimestamp(event.getLastModifiedTimestamp());
+                .setTimestamp(event.getLastModifiedTimestamp(TimeUnit.SECONDS));
 
         return tripUpdateBuilder.build();
     }
 
-    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestamp) {
+    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(cancellation.getRouteId())
@@ -97,7 +99,7 @@ public class GtfsRtFactory {
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
-                .setTimestamp(timestamp);
+                .setTimestamp(timestampMs / 1000);
 
         return tripUpdateBuilder.build();
     }

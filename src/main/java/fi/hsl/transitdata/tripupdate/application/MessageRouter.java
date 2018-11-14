@@ -92,7 +92,8 @@ public class MessageRouter implements IMessageHandler {
                         }
 
                         if (tripUpdateIsValid) {
-                            sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID));
+                            long eventTimeMs = received.getEventTime();
+                            sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID), eventTimeMs);
                         }
                     }
                     else {
@@ -116,11 +117,11 @@ public class MessageRouter implements IMessageHandler {
         }
     }
 
-    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId) {
+    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId, final long pulsarEventTimestamp) {
         GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
         producer.newMessage()
                 .key(dvjId)
-                .eventTime(tripUpdate.getTimestamp())
+                .eventTime(pulsarEventTimestamp)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
                 .value(feedMessage.toByteArray())
                 .sendAsync()

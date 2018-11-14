@@ -6,6 +6,7 @@ import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -50,6 +51,17 @@ public class StopEventTest {
         assertEquals(stop.getRouteData().getStartTime(), START_TIME);
         assertEquals(stop.getRouteData().getDirection(), StopEvent.pubtransDirectionToGtfsDirection(DIRECTION));
         assertEquals(stop.getRouteData().getStopId(), STOP_ID);
+    }
+
+    @Test
+    public void testTimestampConversion() {
+        PubtransTableProtos.Common common = MockDataFactory.mockCommon(DVJ_ID, STOP_SEQ, JPP_ID);
+        final long lastModifiedMs = common.getLastModifiedUtcDateTimeMs();
+        StopEvent stop = StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
+
+        assertEquals(lastModifiedMs, stop.getLastModifiedTimestamp(TimeUnit.MILLISECONDS));
+        assertEquals(lastModifiedMs / 1000, stop.getLastModifiedTimestamp(TimeUnit.SECONDS));
+        assertEquals(lastModifiedMs / (60 * 1000), stop.getLastModifiedTimestamp(TimeUnit.MINUTES));
     }
 
     private void assertIds(StopEvent stop) {
