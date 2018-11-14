@@ -112,9 +112,9 @@ public class ITBaseTripUpdateProcessor {
     }
 
 
-    void validatePulsarProperties(Message<byte[]> received, String dvjId, long eventTime) {
+    void validatePulsarProperties(Message<byte[]> received, long dvjId, long eventTime) {
         assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
-        assertEquals(dvjId, received.getKey());
+        assertEquals(Long.toString(dvjId), received.getKey());
         assertEquals(eventTime, received.getEventTime());
 
     }

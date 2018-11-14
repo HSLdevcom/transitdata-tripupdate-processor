@@ -14,7 +14,6 @@ import static org.junit.Assert.assertNull;
 public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
 
     final long dvjId = 1234567890L;
-    final String dvjIdAsString = Long.toString(dvjId); //TODO refactor and remove
     final String route = "7575";
     final int direction = 2;
     final String date = "2020-12-24";
@@ -27,17 +26,17 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjIdAsString, route, direction, dateTime);
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, dvjIdAsString, msg.timestamp);
+                validatePulsarProperties(received, dvjId, msg.timestamp);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, dvjIdAsString, msg.timestamp, route, direction, dateTime);
+                validateCancellationPayload(feedMessage, msg.timestamp, route, direction, dateTime);
                 logger.info("Message read back, all good");
 
                 validateAcks(1, context);
@@ -49,21 +48,21 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
     @Test
     public void testCancellationWithGtfsRtDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjIdAsString, route, 0, dateTime);
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 0, dateTime);
         testInvalidInput(msg);
     }
 
     @Test
     public void testCancellationWithInvalidDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjIdAsString, route, 10, dateTime);
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 10, dateTime);
         testInvalidInput(msg);
     }
 
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
         final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjIdAsString, route, direction, dateTime, runningStatus);
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, runningStatus);
         testInvalidInput(msg);
     }
 
@@ -95,7 +94,6 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
     }
 
     private void validateCancellationPayload(final GtfsRealtime.FeedMessage feedMessage,
-                                             final String dvjId,
                                              final long eventTimeMs,
                                              final String routeId,
                                              final int direction,
@@ -136,7 +134,7 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 Message<byte[]> received = readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, dvjIdAsString, msg.timestamp);
+                validatePulsarProperties(received, dvjId, msg.timestamp);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 assertNotNull(feedMessage);

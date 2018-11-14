@@ -21,11 +21,11 @@ public class ITMockDataSource {
     private ITMockDataSource() {}
 
     static class SourceMessage {
-        public SourceMessage(byte[] payload, TransitdataProperties.ProtobufSchema schema, String dvjId, long timestamp) {
+        public SourceMessage(byte[] payload, TransitdataProperties.ProtobufSchema schema, long dvjId, long timestamp) {
             this(payload, schema, dvjId, timestamp, new HashMap<>());
         }
 
-        public SourceMessage(byte[] payload, TransitdataProperties.ProtobufSchema schema, String dvjId, long timestamp, Map<String, String> props) {
+        public SourceMessage(byte[] payload, TransitdataProperties.ProtobufSchema schema, long dvjId, long timestamp, Map<String, String> props) {
             this.payload = payload;
             this.schema = schema;
             this.timestamp = timestamp;
@@ -35,14 +35,14 @@ public class ITMockDataSource {
         byte[] payload;
         TransitdataProperties.ProtobufSchema schema;
         long timestamp;
-        String dvjId;
+        long dvjId;
         Map<String, String> props;
     }
 
     static class CancellationSourceMessage extends SourceMessage {
         InternalMessages.TripCancellation cancellation;
 
-        public CancellationSourceMessage(InternalMessages.TripCancellation cancellation, String dvjId, long timestamp) {
+        public CancellationSourceMessage(InternalMessages.TripCancellation cancellation, long dvjId, long timestamp) {
             super(cancellation.toByteArray(), TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation, dvjId, timestamp);
             this.cancellation = cancellation;
         }
@@ -51,17 +51,17 @@ public class ITMockDataSource {
     static class ArrivalSourceMessage extends SourceMessage {
         PubtransTableProtos.ROIArrival arrival;
 
-        public ArrivalSourceMessage(PubtransTableProtos.ROIArrival arrival, String dvjId, long timestamp, Map<String, String> props) {
+        public ArrivalSourceMessage(PubtransTableProtos.ROIArrival arrival, long dvjId, long timestamp, Map<String, String> props) {
             super(arrival.toByteArray(), TransitdataProperties.ProtobufSchema.PubtransRoiArrival, dvjId, timestamp, props);
             this.arrival = arrival;
         }
     }
 
-    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction, LocalDateTime startTime) {
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction, LocalDateTime startTime) {
         return newCancellationMessage(dvjId, routeId, direction, startTime, InternalMessages.TripCancellation.Status.CANCELED);
     }
 
-    public static CancellationSourceMessage newCancellationMessage(String dvjId, String routeId, int direction,
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction,
                                                                    LocalDateTime startTime,
                                                                    InternalMessages.TripCancellation.Status status) {
 
@@ -117,14 +117,15 @@ public class ITMockDataSource {
 
         final String[] dateAndTime = MockDataFactory.formatStopEventTargetDateTime(targetTimeEpochMs / 1000); //TODO refactor sec <-> ms in some consistent way
         Map<String, String> props = MockDataFactory.mockMessageProperties(stopSeqAndId, direction, routeId, dateAndTime[0], dateAndTime[1]);
-        return new ArrivalSourceMessage(arrival, Long.toString(dvjId), nowMs, props);
+        return new ArrivalSourceMessage(arrival, dvjId, nowMs, props);
     }
 
     public static void sendPulsarMessage(Producer<byte[]> producer, SourceMessage msg) throws PulsarClientException {
+        String dvjIdAsString = Long.toString(msg.dvjId);
         TypedMessageBuilder<byte[]> builder = producer.newMessage().value(msg.payload)
                 .eventTime(msg.timestamp)
-                .key(msg.dvjId)
-                .property(TransitdataProperties.KEY_DVJ_ID, msg.dvjId)
+                .key(dvjIdAsString)
+                .property(TransitdataProperties.KEY_DVJ_ID, dvjIdAsString)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, msg.schema.toString());
 
         msg.props.forEach((key, value) -> builder.property(key, value));
