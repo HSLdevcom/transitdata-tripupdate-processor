@@ -26,7 +26,7 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
             if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() &&
                 tripCancellation.hasStartDate() && tripCancellation.hasStartTime()) {
-                return true;
+                return ProcessorUtils.validateRouteName(tripCancellation.getRouteId());
             }
 
         } catch (InvalidProtocolBufferException e) {
@@ -52,4 +52,5 @@ public class TripCancellationProcessor implements IMessageProcessor {
         return tripUpdate;
 
     }
+
 }
