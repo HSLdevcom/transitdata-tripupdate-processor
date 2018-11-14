@@ -31,12 +31,12 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
                 int directionId = tripCancellation.getDirectionId();
                 valid &= (directionId == 1 || directionId == 2);
+                valid &= ProcessorUtils.validateRouteName(tripCancellation.getRouteId());
 
                 return valid;
             }
         } catch (InvalidProtocolBufferException e) {
             log.error("TripCancellation message could not be parsed: " + e.getMessage());
-            return false;
         }
         return false;
     }
@@ -56,4 +56,5 @@ public class TripCancellationProcessor implements IMessageProcessor {
         return tripUpdate;
 
     }
+
 }

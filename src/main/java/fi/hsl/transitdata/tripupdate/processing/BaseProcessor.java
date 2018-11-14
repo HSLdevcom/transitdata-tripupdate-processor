@@ -90,6 +90,10 @@ public abstract class BaseProcessor implements IMessageProcessor {
             }
         }
 
+        if (!ProcessorUtils.validateRouteName(properties.get(TransitdataProperties.KEY_ROUTE_NAME))) {
+            return false;
+        }
+
         //Filter out trains. Currently route IDs for trains are 3001 and 3002.
         Pattern trainPattern = Pattern.compile("^300(1|2)");
         if (trainPattern.matcher(properties.get(TransitdataProperties.KEY_ROUTE_NAME)).find()) {

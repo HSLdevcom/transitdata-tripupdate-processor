@@ -2,6 +2,7 @@ package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
@@ -65,6 +66,13 @@ public class MockDataFactory {
         return StopEvent.newInstance(common, props, eventType);
     }
 
+    public static StopEvent mockStopEvent(String routeId) {
+
+        Map<String, String> mockProperties = mockMessageProperties(1234567, 0, routeId, "20180101", "11:22:00");
+        PubtransTableProtos.Common mockCommon = mockCommon(111, 2, 333);
+        return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
+    }
+
     public static Map<String, String> mockMessageProperties(long stopId, int direction, String routeName, String operatingDay, String startTime) {
 
         Map<String, String> props = new HashMap<>();
@@ -122,6 +130,25 @@ public class MockDataFactory {
         }
 
         return stopTimeUpdateBuilder.setStopId(stopId).build();
+    }
+
+    public static InternalMessages.TripCancellation mockTripCancellation(String routeId, int directionId,
+                                                                         String startDate, String startTime) {
+
+        InternalMessages.TripCancellation.Builder tripCancellationBuilder = InternalMessages.TripCancellation.newBuilder();
+
+        tripCancellationBuilder.setRouteId(routeId)
+                .setDirectionId(directionId)
+                .setStartDate(startDate)
+                .setStartTime(startTime)
+                .setSchemaVersion(tripCancellationBuilder.getSchemaVersion())
+                .setStatus(InternalMessages.TripCancellation.Status.CANCELED);
+
+        return tripCancellationBuilder.build();
+    }
+
+    public static InternalMessages.TripCancellation mockTripCancellation(String routeId) {
+        return mockTripCancellation(routeId, 0, "20180101", "11:22:00");
     }
 
     public static GtfsRealtime.TripUpdate mockTripUpdate(String routeId, int directionId,
