@@ -116,7 +116,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             return false;
         }
         if (common.getType() == 0) {
-            log.error("Event is for a via point, message discarded");
+            log.info("Event is for a via point, message discarded");
             return false;
         }
         return true;
