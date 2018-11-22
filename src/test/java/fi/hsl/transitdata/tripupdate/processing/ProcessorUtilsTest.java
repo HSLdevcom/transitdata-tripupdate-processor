@@ -1,8 +1,14 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
+import fi.hsl.common.transitdata.TransitdataProperties;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ProcessorUtilsTest {
 
@@ -54,6 +60,25 @@ public class ProcessorUtilsTest {
     @Test
     public void routeNameLongerThanSixCharsIsInvalid() {
         assertEquals(false, ProcessorUtils.validateRouteName("6173AKT"));
+    }
+
+    @Test
+    public void trainRouteMatches() {
+        assertTrue(ProcessorUtils.isTrainRoute("3001K"));
+        assertTrue(ProcessorUtils.isTrainRoute("3002U"));
+        assertTrue(ProcessorUtils.isTrainRoute("3001"));
+        assertTrue(ProcessorUtils.isTrainRoute("3002"));
+        assertTrue(ProcessorUtils.isTrainRoute("3002 ABC"));
+    }
+
+    @Test
+    public void nonTrainRoutesDoesntMatch() {
+        assertFalse(ProcessorUtils.isTrainRoute("3000K"));
+        assertFalse(ProcessorUtils.isTrainRoute("3003U"));
+        assertFalse(ProcessorUtils.isTrainRoute("3000"));
+        assertFalse(ProcessorUtils.isTrainRoute("3003"));
+        assertFalse(ProcessorUtils.isTrainRoute("757"));
+        assertFalse(ProcessorUtils.isTrainRoute("30002"));
     }
 
 }
