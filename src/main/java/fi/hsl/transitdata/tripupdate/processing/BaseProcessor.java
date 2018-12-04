@@ -89,13 +89,14 @@ public abstract class BaseProcessor implements IMessageProcessor {
             }
         }
 
-        if (!ProcessorUtils.validateRouteName(properties.get(TransitdataProperties.KEY_ROUTE_NAME))) {
+        final String routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
+        if (!ProcessorUtils.validateRouteName(routeName)) {
+            log.warn("Invalid route name {}, discarding message", routeName);
             return false;
         }
 
-        //Filter out trains. Currently route IDs for trains are 3001 and 3002.
-        Pattern trainPattern = Pattern.compile("^300(1|2)");
-        if (trainPattern.matcher(properties.get(TransitdataProperties.KEY_ROUTE_NAME)).find()) {
+        if (ProcessorUtils.isTrainRoute(routeName)) {
+            log.info("Route {} is for trains, discarding message", routeName);
             return false;
         }
 
@@ -116,7 +117,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             return false;
         }
         if (common.getType() == 0) {
-            log.error("Event is for a via point, message discarded");
+            log.info("Event is for a via point, message discarded");
             return false;
         }
         return true;

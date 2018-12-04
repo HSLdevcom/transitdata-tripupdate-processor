@@ -96,7 +96,7 @@ public class MessageRouter implements IMessageHandler {
                         }
                     }
                     else {
-                        log.warn("Errors with message payload, ignoring.");
+                        log.info("Message didn't pass validation, ignoring.");
                     }
                 }
                 else {
