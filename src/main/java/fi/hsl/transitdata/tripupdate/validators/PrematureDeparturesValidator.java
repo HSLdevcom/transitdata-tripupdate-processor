@@ -23,7 +23,10 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
     public boolean validate(GtfsRealtime.TripUpdate tripUpdate) {
         //If a TripUpdate has no StopTimeUpdates, it is most likely represents a trip that has been cancelled
         //Current hypothesis is that these messages should always be relevant and thus routed through
-        if (tripUpdate.getStopTimeUpdateList().isEmpty()) {
+        boolean isCancellation = tripUpdate.getTrip().hasScheduleRelationship() &&
+                tripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
+
+        if (isCancellation || tripUpdate.getStopTimeUpdateList().isEmpty()) {
             return true;
         }
 

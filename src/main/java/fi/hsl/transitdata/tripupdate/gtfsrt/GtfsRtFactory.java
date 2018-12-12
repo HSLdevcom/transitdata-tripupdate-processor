@@ -3,7 +3,7 @@ package fi.hsl.transitdata.tripupdate.gtfsrt;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
-
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,12 +85,12 @@ public class GtfsRtFactory {
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
-                .setTimestamp(event.getLastModifiedTimestamp());
+                .setTimestamp(event.getLastModifiedTimestamp(TimeUnit.SECONDS));
 
         return tripUpdateBuilder.build();
     }
 
-    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestamp) {
+    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(reformatRouteName(cancellation.getRouteId()))
@@ -102,7 +102,7 @@ public class GtfsRtFactory {
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
-                .setTimestamp(timestamp);
+                .setTimestamp(timestampMs / 1000);
 
         return tripUpdateBuilder.build();
     }

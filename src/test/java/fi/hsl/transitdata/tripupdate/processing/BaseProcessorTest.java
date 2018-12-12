@@ -39,6 +39,7 @@ public class BaseProcessorTest {
         properties.put(TransitdataProperties.KEY_DIRECTION, "0");
         properties.put(TransitdataProperties.KEY_OPERATING_DAY, "20181109");
         properties.put(TransitdataProperties.KEY_START_TIME, "11:22:00");
+        properties.put(TransitdataProperties.KEY_DVJ_ID, "1234567890");
 
         assertEquals(true, BaseProcessor.validateRequiredProperties(properties));
 

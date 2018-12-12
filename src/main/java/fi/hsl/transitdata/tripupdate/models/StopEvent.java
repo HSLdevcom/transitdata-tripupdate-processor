@@ -5,6 +5,7 @@ import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * StopEvent is an immutable (intermediate) data format.
@@ -66,7 +67,7 @@ public class StopEvent {
         event.scheduleRelationship = (common.getState() == 3L) ? StopEvent.ScheduleRelationship.Skipped : StopEvent.ScheduleRelationship.Scheduled;
         //Timestamps in GTFS need to be in seconds
         event.targetTime = common.getTargetUtcDateTimeMs() / 1000;
-        event.lastModifiedTimestamp = common.getLastModifiedUtcDateTimeMs() / 1000;
+        event.lastModifiedTimestamp = common.getLastModifiedUtcDateTimeMs();
 
         if (properties != null) {
             event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
@@ -109,7 +110,7 @@ public class StopEvent {
         return routeData;
     }
 
-    public long getLastModifiedTimestamp() {
-        return lastModifiedTimestamp;
+    public long getLastModifiedTimestamp(TimeUnit unit) {
+        return unit.convert(lastModifiedTimestamp, TimeUnit.MILLISECONDS);
     }
 }

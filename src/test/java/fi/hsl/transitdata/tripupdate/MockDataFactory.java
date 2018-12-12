@@ -8,6 +8,8 @@ import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +19,7 @@ public class MockDataFactory {
     public static final long DEFAULT_DVJ_ID = 1234567890L;
     public static final long DEFAULT_JPP_ID = 9876543210L;
 
-    public static final SimpleDateFormat START_TIME_FORMAT = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+    public static final SimpleDateFormat START_TIME_FORMAT = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
 
 
     public static StopEvent mockStopEvent(PubtransTableProtos.Common common, Map<String, String> mockProps, StopEvent.EventType eventType) {
@@ -48,12 +50,17 @@ public class MockDataFactory {
         return arrivalUpdate.toBuilder().setDeparture(departureUpdate.getDeparture()).build();
     }
 
-    public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
+    public static String[] formatStopEventTargetDateTime(long startTimeEpoch) {
+        //TODO refactor
         String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
+        return startTimeAsString.split(" ");
+    }
+
+    public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
         PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
         //System.out.println(startTimeAsString);
         final int stopId = stopSequence;
-        String[] dateAndTime = startTimeAsString.split(" ");
+        String[] dateAndTime = formatStopEventTargetDateTime(startTimeEpoch);
 
         Map<String, String> props = mockMessageProperties(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", dateAndTime[0], dateAndTime[1]);
         return StopEvent.newInstance(common, props, eventType);
@@ -62,12 +69,9 @@ public class MockDataFactory {
     public static StopEvent mockStopEvent(String routeId) {
 
         Map<String, String> mockProperties = mockMessageProperties(1234567, 0, routeId, "20180101", "11:22:00");
-
         PubtransTableProtos.Common mockCommon = mockCommon(111, 2, 333);
-
         return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
     }
-
 
     public static Map<String, String> mockMessageProperties(long stopId, int direction, String routeName, String operatingDay, String startTime) {
 

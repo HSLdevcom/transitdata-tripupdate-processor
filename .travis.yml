@@ -21,6 +21,8 @@ before_install:
   - echo "ENV GIT_COMMIT ${TRAVIS_COMMIT}" >> Dockerfile
 
 script:
+  - mvn clean test
+  - mvn verify -P integration-test
   - docker build --tag "${DOCKER_LOCAL}" .
 
 deploy:

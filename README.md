@@ -35,3 +35,20 @@ Requirements:
 Launch Docker container with
 
 ```docker-compose -f compose-config-file.yml up <service-name>```   
+
+
+
+## Tests:
+
+We're separating our unit & integration tests using [this pattern](https://www.petrikainulainen.net/programming/maven/integration-testing-with-maven/).
+
+Unit tests:
+
+- add test classes under ./src/test with suffix *Test.java
+- `mvn clean test -P unit-test`   
+
+Integration tests:
+
+- add test classes under ./src/integration-test with prefix IT*.java
+- `mvn clean verify -P integration-test`   
+

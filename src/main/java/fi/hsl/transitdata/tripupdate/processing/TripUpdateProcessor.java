@@ -5,6 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
@@ -46,10 +47,8 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public TripUpdate processStopEvent(final String messageKey, StopEvent stopEvent) {
-
+    public TripUpdate processStopEvent(StopEvent stopEvent) {
         TripUpdate tripUpdate = null;
-
         try {
             StopTimeUpdate latest = updateStopTimeUpdateCache(stopEvent);
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(stopEvent.getDatedVehicleJourneyId());
@@ -59,10 +58,6 @@ public class TripUpdateProcessor {
 
             tripUpdate = updateTripUpdateCacheWithStopTimes(stopEvent, validated);
             //According to GTFS spec, timestamp identifies the moment when the content of this feed has been created in POSIX time
-            //final long timestamp = tripUpdate.getTimestamp();
-            //final String id = Long.toString(stopEvent.getDatedVehicleJourneyId());
-
-            //sendTripUpdate(messageKey, tripUpdate, id, timestamp);
         } catch (Exception e) {
             log.error("Exception while processing stopTimeUpdate into tripUpdate", e);
         }
@@ -70,7 +65,6 @@ public class TripUpdateProcessor {
         return tripUpdate;
 
     }
-
 
 
     public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
@@ -135,7 +129,7 @@ public class TripUpdateProcessor {
         TripUpdate tripUpdate = previousTripUpdate.toBuilder()
                 .clearStopTimeUpdate()
                 .addAllStopTimeUpdate(stopTimeUpdates)
-                .setTimestamp(latest.getLastModifiedTimestamp())
+                .setTimestamp(latest.getLastModifiedTimestamp(TimeUnit.SECONDS))
                 .build();
 
         tripUpdateCache.put(dvjId, tripUpdate);
@@ -144,11 +138,11 @@ public class TripUpdateProcessor {
     }
 
     private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId,
-                                                             long messageTimestamp,
+                                                             long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
         if (previousTripUpdate == null) {
-            previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestamp);
+            previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestampMs);
         }
 
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
@@ -158,7 +152,7 @@ public class TripUpdateProcessor {
         TripUpdate newTripUpdate = previousTripUpdate.toBuilder()
                 .setTrip(tripDescriptor)
                 .clearStopTimeUpdate()
-                .setTimestamp(messageTimestamp)
+                .setTimestamp(TimeUnit.SECONDS.convert(messageTimestampMs, TimeUnit.MILLISECONDS))
                 .build();
 
         tripUpdateCache.put(dvjId, newTripUpdate);
