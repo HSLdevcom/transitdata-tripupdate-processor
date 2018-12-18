@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fi.hsl.transitdata</groupId>
     <artifactId>transitdata-tripupdate-processor</artifactId>
-    <version>0.4.2</version>
+    <version>0.4.3</version>
     <packaging>jar</packaging>
 
     <repositories>
@@ -18,7 +18,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <pulsar.version>2.1.0-incubating</pulsar.version>
-        <common.version>0.4.0</common.version>
+        <common.version>0.6.0</common.version>
         <testcontainers.version>1.9.0</testcontainers.version>
     </properties>
     <profiles>
@@ -59,7 +59,6 @@
             <artifactId>transitdata-common</artifactId>
             <version>${common.version}</version>
         </dependency>
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -85,13 +84,14 @@
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>org.apache.pulsar</groupId>
-            <artifactId>pulsar-client-admin</artifactId>
-            <version>${pulsar.version}</version>
+            <groupId>fi.hsl</groupId>
+            <artifactId>transitdata-common</artifactId>
+            <version>${common.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
