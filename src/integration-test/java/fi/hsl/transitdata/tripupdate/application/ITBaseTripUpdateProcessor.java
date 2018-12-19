@@ -51,28 +51,10 @@ public class ITBaseTripUpdateProcessor {
         }
     }
 
-    private Config defaultConfig(String configFileName) {
-        Config config = ConfigParser.createConfig(configFileName);
-        assertNotNull(config);
-        return config;
-    }
-
-    private Config defaultConfigWithOverride(String configFileName, String key, Object value) {
-        Map<String, Object> overrides = new HashMap<>();
-        overrides.put(key, value);
-        return defaultConfigWithOverrides(configFileName, overrides);
-    }
-
-
-    private Config defaultConfigWithOverrides(String configFileName, Map<String, Object> overrides) {
-        Config configOverrides = ConfigFactory.parseMap(overrides);
-        return ConfigParser.mergeConfigs(defaultConfig(configFileName), configOverrides);
-    }
-
-    private PulsarApplication createPulsarApp(String config) throws Exception {
+    private PulsarApplication createPulsarApp(String config, String testId) throws Exception {
         logger.info("Creating Pulsar Application for config " + config);
 
-        Config base = defaultConfig(config);
+        Config base = PulsarMockApplication.readConfigWithTopicOverrides(config, testId);
         assertNotNull(base);
         PulsarApplication app = PulsarMockApplication.newInstance(base, null, pulsar);
         assertNotNull(app);
@@ -119,20 +101,20 @@ public class ITBaseTripUpdateProcessor {
 
     }
 
-    public void testPulsar(TestLogic logic) throws Exception {
+    public void testPulsar(TestLogic logic, String testId) throws Exception {
 
         logger.info("Initializing test resources");
-        PulsarApplication sourceApp = createPulsarApp("integration-test-source.conf");
+        PulsarApplication sourceApp = createPulsarApp("integration-test-source.conf", testId);
         Producer<byte[]> source = sourceApp.getContext().getProducer();
         assertNotNull(source);
         assertTrue(source.isConnected());
 
-        PulsarApplication sinkApp = createPulsarApp("integration-test-sink.conf");
+        PulsarApplication sinkApp = createPulsarApp("integration-test-sink.conf", testId);
         Consumer<byte[]> sink = sinkApp.getContext().getConsumer();
         assertNotNull(sink);
         assertTrue(sink.isConnected());
 
-        PulsarApplication testApp = createPulsarApp("integration-test.conf");
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
 
         TestContext context = new TestContext();
         context.sink = sink;

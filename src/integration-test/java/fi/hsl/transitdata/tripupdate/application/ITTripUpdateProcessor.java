@@ -42,28 +42,28 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 validateAcks(1, context);
             }
         };
-        testPulsar(logic);
+        testPulsar(logic, "-test-cancel");
     }
 
     @Test
     public void testCancellationWithGtfsRtDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
         ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 0, dateTime);
-        testInvalidInput(msg);
+        testInvalidInput(msg, "-test-gtfs-dir");
     }
 
     @Test
     public void testCancellationWithInvalidDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
         ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 10, dateTime);
-        testInvalidInput(msg);
+        testInvalidInput(msg, "-test-invalid-dir");
     }
 
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
         final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
         ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, runningStatus);
-        testInvalidInput(msg);
+        testInvalidInput(msg, "-test-running");
     }
 
     /**
@@ -72,7 +72,7 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
      *
      * @throws Exception
      */
-    private void testInvalidInput(final ITMockDataSource.SourceMessage somethingWrongWithPayload) throws Exception {
+    private void testInvalidInput(final ITMockDataSource.SourceMessage somethingWrongWithPayload, String testId) throws Exception {
         TestLogic logic = new TestLogic() {
             @Override
             public void testImpl(TestContext context) throws Exception {
@@ -85,7 +85,7 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 validateAcks(1, context); //sender should still get acks.
             }
         };
-        testPulsar(logic);
+        testPulsar(logic, testId);
     }
 
 
@@ -143,13 +143,13 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
                 validateAcks(1, context);
             }
         };
-        testPulsar(logic);
+        testPulsar(logic, "-test-valid-stop");
     }
 
     @Test
     public void testViaPointStopEvent() throws Exception {
         int startTimeOffsetInSeconds = 5 * 60;
         ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, direction, stopId, true);
-        testInvalidInput(msg);
+        testInvalidInput(msg,"-test-viapoint");
     }
 }
