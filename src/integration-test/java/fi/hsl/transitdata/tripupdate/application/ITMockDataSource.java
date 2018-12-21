@@ -1,5 +1,6 @@
 package fi.hsl.transitdata.tripupdate.application;
 
+import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
@@ -115,8 +116,7 @@ public class ITMockDataSource {
                 .setCommon(common)
                 .build();
 
-        final String[] dateAndTime = MockDataFactory.formatStopEventTargetDateTime(targetTimeEpochMs / 1000); //TODO refactor sec <-> ms in some consistent way
-        Map<String, String> props = MockDataFactory.mockMessageProperties(stopSeqAndId, direction, routeId, dateAndTime[0], dateAndTime[1]);
+        Map<String, String> props = new RouteData(stopSeqAndId, direction, routeId, targetTimeEpochMs / 1000).toMap();
         return new ArrivalSourceMessage(arrival, dvjId, nowMs, props);
     }
 

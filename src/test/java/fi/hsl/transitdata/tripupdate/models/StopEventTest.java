@@ -1,5 +1,6 @@
 package fi.hsl.transitdata.tripupdate.models;
 
+import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.MockDataFactory;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
@@ -40,7 +41,7 @@ public class StopEventTest {
     @Test
     public void instantiateFully() {
         PubtransTableProtos.Common common = MockDataFactory.mockCommon(DVJ_ID, STOP_SEQ, JPP_ID);
-        Map<String, String> props = MockDataFactory.mockMessageProperties(STOP_ID, DIRECTION, ROUTE_NAME, OPERATING_DAY, START_TIME);
+        Map<String, String> props = new RouteData(STOP_ID, DIRECTION, ROUTE_NAME, OPERATING_DAY, START_TIME).toMap();
 
         StopEvent stop = StopEvent.newInstance(common, props, StopEvent.EventType.Departure);
 

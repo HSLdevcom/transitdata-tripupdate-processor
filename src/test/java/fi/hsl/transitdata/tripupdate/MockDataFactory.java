@@ -1,6 +1,8 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.MockDataUtils;
+import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
@@ -58,31 +60,19 @@ public class MockDataFactory {
 
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
         PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
-        //System.out.println(startTimeAsString);
         final int stopId = stopSequence;
-        String[] dateAndTime = formatStopEventTargetDateTime(startTimeEpoch);
 
-        Map<String, String> props = mockMessageProperties(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", dateAndTime[0], dateAndTime[1]);
+        Map<String, String> props = new RouteData(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", startTimeEpoch).toMap();
         return StopEvent.newInstance(common, props, eventType);
     }
 
     public static StopEvent mockStopEvent(String routeId) {
 
-        Map<String, String> mockProperties = mockMessageProperties(1234567, 0, routeId, "20180101", "11:22:00");
-        PubtransTableProtos.Common mockCommon = mockCommon(111, 2, 333);
+        Map<String, String> mockProperties = new RouteData(MockDataUtils.generateValidJoreId(), GtfsRtFactory.DIRECTION_ID_OUTBOUND, routeId, "20180101", "11:22:00").toMap();
+        PubtransTableProtos.Common mockCommon = MockDataUtils.generateValidCommon().build();
         return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
     }
 
-    public static Map<String, String> mockMessageProperties(long stopId, int direction, String routeName, String operatingDay, String startTime) {
-
-        Map<String, String> props = new HashMap<>();
-        props.put(TransitdataProperties.KEY_DIRECTION, Integer.toString(direction));
-        props.put(TransitdataProperties.KEY_ROUTE_NAME, routeName);
-        props.put(TransitdataProperties.KEY_OPERATING_DAY, operatingDay);
-        props.put(TransitdataProperties.KEY_START_TIME, startTime);
-        props.put(TransitdataProperties.KEY_STOP_ID, Long.toString(stopId));
-        return props;
-    }
 
     public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId) {
         return mockCommon(dvjId, stopSequence, jppId, 1545674400000L);
