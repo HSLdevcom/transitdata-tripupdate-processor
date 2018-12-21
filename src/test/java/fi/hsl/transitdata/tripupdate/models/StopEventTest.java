@@ -1,5 +1,6 @@
 package fi.hsl.transitdata.tripupdate.models;
 
+import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.MockDataFactory;
@@ -16,7 +17,6 @@ import static org.junit.Assert.assertTrue;
 public class StopEventTest {
 
     private static final long DVJ_ID = Long.MAX_VALUE - 1;
-    private static final long JPP_ID = Long.MAX_VALUE - 2;
     private static final int STOP_SEQ = Integer.MAX_VALUE;
 
     private static final int DIRECTION = 1;
@@ -27,7 +27,7 @@ public class StopEventTest {
 
     @Test
     public void instantiateWithoutProperties() {
-        PubtransTableProtos.Common common = MockDataFactory.mockCommon(DVJ_ID, STOP_SEQ, JPP_ID);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DVJ_ID, STOP_SEQ).build();
         StopEvent stop = StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
 
         assertIds(stop);
@@ -40,7 +40,7 @@ public class StopEventTest {
 
     @Test
     public void instantiateFully() {
-        PubtransTableProtos.Common common = MockDataFactory.mockCommon(DVJ_ID, STOP_SEQ, JPP_ID);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DVJ_ID, STOP_SEQ).build();
         Map<String, String> props = new RouteData(STOP_ID, DIRECTION, ROUTE_NAME, OPERATING_DAY, START_TIME).toMap();
 
         StopEvent stop = StopEvent.newInstance(common, props, StopEvent.EventType.Departure);
@@ -56,7 +56,7 @@ public class StopEventTest {
 
     @Test
     public void testTimestampConversion() {
-        PubtransTableProtos.Common common = MockDataFactory.mockCommon(DVJ_ID, STOP_SEQ, JPP_ID);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DVJ_ID, STOP_SEQ).build();
         final long lastModifiedMs = common.getLastModifiedUtcDateTimeMs();
         StopEvent stop = StopEvent.newInstance(common, null, StopEvent.EventType.Arrival);
 

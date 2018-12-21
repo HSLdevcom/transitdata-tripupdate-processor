@@ -19,10 +19,6 @@ import java.util.Map;
 public class MockDataFactory {
 
     public static final long DEFAULT_DVJ_ID = 1234567890L;
-    public static final long DEFAULT_JPP_ID = 9876543210L;
-
-    public static final SimpleDateFormat START_TIME_FORMAT = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
-
 
     public static StopEvent mockStopEvent(PubtransTableProtos.Common common, Map<String, String> mockProps, StopEvent.EventType eventType) {
         return StopEvent.newInstance(common, mockProps, eventType);
@@ -52,14 +48,8 @@ public class MockDataFactory {
         return arrivalUpdate.toBuilder().setDeparture(departureUpdate.getDeparture()).build();
     }
 
-    public static String[] formatStopEventTargetDateTime(long startTimeEpoch) {
-        //TODO refactor
-        String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
-        return startTimeAsString.split(" ");
-    }
-
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
-        PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DEFAULT_DVJ_ID, stopSequence, startTimeEpoch * 1000).build();
         final int stopId = stopSequence;
 
         Map<String, String> props = new RouteData(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", startTimeEpoch).toMap();
@@ -73,7 +63,7 @@ public class MockDataFactory {
         return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
     }
 
-
+    /*
     public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId) {
         return mockCommon(dvjId, stopSequence, jppId, 1545674400000L);
     }
@@ -97,7 +87,7 @@ public class MockDataFactory {
         commonBuilder.setLastModifiedUtcDateTimeMs(1536218315000L);
 
         return commonBuilder.build();
-    }
+    }*/
 
     public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(String stopId, long arrivalTime,
                                                                          long departureTime) {

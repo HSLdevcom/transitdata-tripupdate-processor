@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.MockDataFactory;
@@ -58,7 +59,7 @@ public class TripUpdateProcessorTest {
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        PubtransTableProtos.Common common = MockDataFactory.mockCommon(dvjId, stopSequence, dvjId);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(dvjId, stopSequence).build();
         final int direction = 1;
         final String routeName = "69A";
         final String operatingDay = "monday";
