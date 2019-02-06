@@ -63,32 +63,6 @@ public class MockDataFactory {
         return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
     }
 
-    /*
-    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId) {
-        return mockCommon(dvjId, stopSequence, jppId, 1545674400000L);
-    }
-
-
-    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId, long targetDateTimeMs) {
-        PubtransTableProtos.Common.Builder commonBuilder = PubtransTableProtos.Common.newBuilder();
-        commonBuilder.setIsOnDatedVehicleJourneyId(dvjId);
-        commonBuilder.setIsTargetedAtJourneyPatternPointGid(jppId);
-        commonBuilder.setJourneyPatternSequenceNumber(stopSequence);
-
-        commonBuilder.setState(3L);
-        commonBuilder.setTargetUtcDateTimeMs(targetDateTimeMs);
-        commonBuilder.setSchemaVersion(commonBuilder.getSchemaVersion());
-
-        commonBuilder.setId(987654321L);
-        commonBuilder.setIsTimetabledAtJourneyPatternPointGid(1);
-        commonBuilder.setVisitCountNumber(2);
-        commonBuilder.setType(3);
-        commonBuilder.setIsValidYesNo(true);
-        commonBuilder.setLastModifiedUtcDateTimeMs(1536218315000L);
-
-        return commonBuilder.build();
-    }*/
-
     public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(String stopId, long arrivalTime,
                                                                          long departureTime) {
 
