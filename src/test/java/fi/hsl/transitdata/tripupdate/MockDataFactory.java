@@ -1,6 +1,8 @@
 package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.MockDataUtils;
+import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
@@ -17,10 +19,6 @@ import java.util.Map;
 public class MockDataFactory {
 
     public static final long DEFAULT_DVJ_ID = 1234567890L;
-    public static final long DEFAULT_JPP_ID = 9876543210L;
-
-    public static final SimpleDateFormat START_TIME_FORMAT = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
-
 
     public static StopEvent mockStopEvent(PubtransTableProtos.Common common, Map<String, String> mockProps, StopEvent.EventType eventType) {
         return StopEvent.newInstance(common, mockProps, eventType);
@@ -50,63 +48,19 @@ public class MockDataFactory {
         return arrivalUpdate.toBuilder().setDeparture(departureUpdate.getDeparture()).build();
     }
 
-    public static String[] formatStopEventTargetDateTime(long startTimeEpoch) {
-        //TODO refactor
-        String startTimeAsString = START_TIME_FORMAT.format(new Date(startTimeEpoch * 1000));
-        return startTimeAsString.split(" ");
-    }
-
     public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
-        PubtransTableProtos.Common common = mockCommon(DEFAULT_DVJ_ID, stopSequence, DEFAULT_JPP_ID, startTimeEpoch * 1000);
-        //System.out.println(startTimeAsString);
+        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DEFAULT_DVJ_ID, stopSequence, startTimeEpoch * 1000).build();
         final int stopId = stopSequence;
-        String[] dateAndTime = formatStopEventTargetDateTime(startTimeEpoch);
 
-        Map<String, String> props = mockMessageProperties(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", dateAndTime[0], dateAndTime[1]);
+        Map<String, String> props = new RouteData(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", startTimeEpoch).toMap();
         return StopEvent.newInstance(common, props, eventType);
     }
 
     public static StopEvent mockStopEvent(String routeId) {
 
-        Map<String, String> mockProperties = mockMessageProperties(1234567, 0, routeId, "20180101", "11:22:00");
-        PubtransTableProtos.Common mockCommon = mockCommon(111, 2, 333);
+        Map<String, String> mockProperties = new RouteData(MockDataUtils.generateValidJoreId(), GtfsRtFactory.DIRECTION_ID_OUTBOUND, routeId, "20180101", "11:22:00").toMap();
+        PubtransTableProtos.Common mockCommon = MockDataUtils.generateValidCommon().build();
         return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
-    }
-
-    public static Map<String, String> mockMessageProperties(long stopId, int direction, String routeName, String operatingDay, String startTime) {
-
-        Map<String, String> props = new HashMap<>();
-        props.put(TransitdataProperties.KEY_DIRECTION, Integer.toString(direction));
-        props.put(TransitdataProperties.KEY_ROUTE_NAME, routeName);
-        props.put(TransitdataProperties.KEY_OPERATING_DAY, operatingDay);
-        props.put(TransitdataProperties.KEY_START_TIME, startTime);
-        props.put(TransitdataProperties.KEY_STOP_ID, Long.toString(stopId));
-        return props;
-    }
-
-    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId) {
-        return mockCommon(dvjId, stopSequence, jppId, 1545674400000L);
-    }
-
-
-    public static PubtransTableProtos.Common mockCommon(long dvjId, int stopSequence, long jppId, long targetDateTimeMs) {
-        PubtransTableProtos.Common.Builder commonBuilder = PubtransTableProtos.Common.newBuilder();
-        commonBuilder.setIsOnDatedVehicleJourneyId(dvjId);
-        commonBuilder.setIsTargetedAtJourneyPatternPointGid(jppId);
-        commonBuilder.setJourneyPatternSequenceNumber(stopSequence);
-
-        commonBuilder.setState(3L);
-        commonBuilder.setTargetUtcDateTimeMs(targetDateTimeMs);
-        commonBuilder.setSchemaVersion(commonBuilder.getSchemaVersion());
-
-        commonBuilder.setId(987654321L);
-        commonBuilder.setIsTimetabledAtJourneyPatternPointGid(1);
-        commonBuilder.setVisitCountNumber(2);
-        commonBuilder.setType(3);
-        commonBuilder.setIsValidYesNo(true);
-        commonBuilder.setLastModifiedUtcDateTimeMs(1536218315000L);
-
-        return commonBuilder.build();
     }
 
     public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(String stopId, long arrivalTime,

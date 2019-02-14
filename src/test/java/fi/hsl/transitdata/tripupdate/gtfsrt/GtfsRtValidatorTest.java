@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.transitdata.tripupdate.MockDataFactory;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.junit.Test;
@@ -198,7 +199,7 @@ public class GtfsRtValidatorTest {
         for (int stopSequence = 1; stopSequence < 100; stopSequence++) {
             //Let's switch types to make sure both work
             StopEvent.EventType type = stopSequence % 2 == 0 ? StopEvent.EventType.Arrival :StopEvent.EventType.Departure;
-            StopEvent event = MockDataFactory.mockStopEvent(MockDataFactory.mockCommon(DVI_ID, stopSequence, JPP_ID), null, type);
+            StopEvent event = MockDataFactory.mockStopEvent(MockDataUtils.generateValidCommon(DVI_ID, stopSequence).build(), null, type);
             StopTimeUpdate update = GtfsRtFactory.newStopTimeUpdate(event);
             updates.add(update);
         }
