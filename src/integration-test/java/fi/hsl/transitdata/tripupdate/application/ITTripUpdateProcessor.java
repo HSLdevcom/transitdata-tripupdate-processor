@@ -1,17 +1,18 @@
 package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.pulsar.IMessageHandler;
-import fi.hsl.common.pulsar.ITBaseTestSuite;
-import fi.hsl.common.pulsar.PulsarApplication;
-import fi.hsl.common.pulsar.TestPipeline;
+import fi.hsl.common.pulsar.*;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import org.apache.pulsar.client.api.Message;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import static fi.hsl.common.pulsar.TestPipeline.readOutputMessage;
 import static org.junit.Assert.assertEquals;
@@ -165,5 +166,58 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         int startTimeOffsetInSeconds = 5 * 60;
         ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, direction, stopId, true);
         testInvalidInput(msg,"-test-viapoint");
+    }
+
+    @Test
+    public void testGarbageInput() throws Exception {
+        final String testId = "-test-garbage-input";
+        //TripUpdateProcessor should handle garbage data and process only the relevant messages
+        ArrayList<PulsarMessageData> input = new ArrayList<>();
+        ArrayList<PulsarMessageData> expectedOutput = new ArrayList<>();
+
+        //Add garbage which should just be ignored
+        PulsarMessageData nullData = new PulsarMessageData("".getBytes(), System.currentTimeMillis());
+        input.add(nullData);
+        PulsarMessageData dummyData = new PulsarMessageData("dummy-content".getBytes(), System.currentTimeMillis(), "invalid-key");
+        input.add(dummyData);
+
+        //Then a real message
+        ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, direction, stopId);
+        Map<String, String> properties = arrival.props;
+        properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(arrival.dvjId));
+        properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, arrival.schema.toString());
+        PulsarMessageData validMsg = new PulsarMessageData(arrival.payload, arrival.timestamp, Long.toString(arrival.dvjId), properties);
+        input.add(validMsg);
+        GtfsRealtime.FeedMessage asFeedMessage = arrival.toGtfsRt();
+        //Expected output is GTFS-RT TripUpdate
+        Map<String, String> outputProperties = new HashMap<>();
+        outputProperties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString());
+        PulsarMessageData validOutput = new PulsarMessageData(asFeedMessage.toByteArray(), arrival.timestamp, Long.toString(arrival.dvjId), outputProperties);
+        expectedOutput.add(validOutput);
+
+        TestPipeline.MultiMessageTestLogic logic = new TestPipeline.MultiMessageTestLogic(input, expectedOutput) {
+            @Override
+            public void validateMessage(PulsarMessageData expected, PulsarMessageData received) {
+                try {
+                    assertNotNull(expected);
+                    assertNotNull(received);
+                    assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.properties.get(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
+                    assertEquals(Long.toString(arrival.dvjId), received.key.get());
+                    assertEquals(arrival.timestamp, (long)received.eventTime.get());
+
+                    GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.parseFrom(received.payload);
+                    assertNotNull(entity);
+
+                }
+                catch (Exception e) {
+                    logger.error("Failed to validate message", e);
+                    assert(false);
+                }
+            }
+        };
+
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 }
