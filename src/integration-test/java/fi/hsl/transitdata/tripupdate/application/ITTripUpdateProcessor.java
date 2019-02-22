@@ -1,17 +1,27 @@
 package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.pulsar.IMessageHandler;
+import fi.hsl.common.pulsar.ITBaseTestSuite;
+import fi.hsl.common.pulsar.PulsarApplication;
+import fi.hsl.common.pulsar.TestPipeline;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import org.apache.pulsar.client.api.Message;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
+import static fi.hsl.common.pulsar.TestPipeline.readOutputMessage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
+public class ITTripUpdateProcessor extends ITBaseTestSuite {
+
+    final static DateTimeFormatter gtfsRtDatePattern = DateTimeFormatter.ofPattern("yyyyMMdd");
+    final static DateTimeFormatter gtfsRtTimePattern =  DateTimeFormatter.ofPattern("HH:mm:ss");
 
     final long dvjId = 1234567890L;
     final String route = "7575";
@@ -23,26 +33,29 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
 
     @Test
     public void testValidCancellation() throws Exception {
-        TestLogic logic = new TestLogic() {
+        TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
-            public void testImpl(TestContext context) throws Exception {
+            public void testImpl(TestPipeline.TestContext context) throws Exception {
                 ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
-                Message<byte[]> received = readOutputMessage(context);
+                Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, dvjId, msg.timestamp);
+                validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 validateCancellationPayload(feedMessage, msg.timestamp, route, direction, dateTime);
                 logger.info("Message read back, all good");
 
-                validateAcks(1, context);
+                TestPipeline.validateAcks(1, context);
             }
         };
-        testPulsar(logic, "-test-cancel");
+        final String testId = "-test-cancel";
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
     @Test
@@ -73,24 +86,21 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
      * @throws Exception
      */
     private void testInvalidInput(final ITMockDataSource.SourceMessage somethingWrongWithPayload, String testId) throws Exception {
-        TestLogic logic = new TestLogic() {
+        TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
-            public void testImpl(TestContext context) throws Exception {
+            public void testImpl(TestPipeline.TestContext context) throws Exception {
                 ITMockDataSource.sendPulsarMessage(context.source, somethingWrongWithPayload);
                 logger.info("Message sent, reading it back");
 
-                Message<byte[]> received = readOutputMessage(context);
+                Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 //There should not be any output for Running-status since it's not supported yet
                 assertNull(received);
-                validateAcks(1, context); //sender should still get acks.
+                TestPipeline.validateAcks(1, context); //sender should still get acks.
             }
         };
-        testPulsar(logic, testId);
-    }
-
-
-    private void validateAcks(int numberOfMessagesSent, TestContext context) {
-        assertEquals(numberOfMessagesSent, context.source.getStats().getNumAcksReceived());
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
     private void validateCancellationPayload(final GtfsRealtime.FeedMessage feedMessage,
@@ -123,27 +133,31 @@ public class ITTripUpdateProcessor extends ITBaseTripUpdateProcessor {
 
     @Test
     public void testValidStopEvent() throws Exception {
-        TestLogic logic = new TestLogic() {
+        TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
-            public void testImpl(TestContext context) throws Exception {
+            public void testImpl(TestPipeline.TestContext context) throws Exception {
                 int startTimeOffsetInSeconds = 5 * 60;
                 ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, direction, stopId);
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
-                Message<byte[]> received = readOutputMessage(context);
+                Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, dvjId, msg.timestamp);
+                validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 assertNotNull(feedMessage);
                 //validateCancellationPayload(feedMessage, dvjId, msg.timestamp, route, direction, dateTime);
                 logger.info("Message read back, all good");
-                validateAcks(1, context);
+                TestPipeline.validateAcks(1, context);
             }
         };
-        testPulsar(logic, "-test-valid-stop");
+
+        final String testId = "-test-valid-stop";
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
     @Test
