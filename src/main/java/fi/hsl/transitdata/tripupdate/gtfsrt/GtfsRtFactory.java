@@ -18,23 +18,6 @@ public class GtfsRtFactory {
     private GtfsRtFactory() {
     }
 
-
-    public static GtfsRealtime.FeedMessage newFeedMessage(String id, GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
-
-        GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
-                .setGtfsRealtimeVersion("2.0")
-                .setIncrementality(GtfsRealtime.FeedHeader.Incrementality.DIFFERENTIAL)
-                .setTimestamp(timestamp)
-                .build();
-
-        GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
-                .setTripUpdate(tripUpdate)
-                .setId(id)
-                .build();
-
-        return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();
-    }
-
     public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdate(StopEvent stopEvent) {
         return newStopTimeUpdateFromPrevious(stopEvent, null);
     }
