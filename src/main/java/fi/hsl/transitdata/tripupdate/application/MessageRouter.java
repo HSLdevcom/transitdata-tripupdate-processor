@@ -2,7 +2,7 @@ package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
 import com.typesafe.config.Config;
-import fi.hsl.common.gtfsrt.GtfsRtUtils;
+import fi.hsl.common.gtfsrt.FeedMessageFactory;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -10,7 +10,6 @@ import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
-import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
 import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
@@ -119,7 +118,7 @@ public class MessageRouter implements IMessageHandler {
     }
 
     private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId, final long pulsarEventTimestamp) {
-        GtfsRealtime.FeedMessage feedMessage = GtfsRtUtils.createDifferentialFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
+        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
         producer.newMessage()
                 .key(dvjId)
                 .eventTime(pulsarEventTimestamp)
