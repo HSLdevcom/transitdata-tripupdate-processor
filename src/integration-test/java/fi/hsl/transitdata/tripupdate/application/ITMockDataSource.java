@@ -1,11 +1,13 @@
 package fi.hsl.transitdata.tripupdate.application;
 
+import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.MockDataFactory;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -56,6 +58,13 @@ public class ITMockDataSource {
         public ArrivalSourceMessage(PubtransTableProtos.ROIArrival arrival, long dvjId, long timestamp, Map<String, String> props) {
             super(arrival.toByteArray(), TransitdataProperties.ProtobufSchema.PubtransRoiArrival, dvjId, timestamp, props);
             this.arrival = arrival;
+        }
+
+        public GtfsRealtime.FeedMessage toGtfsRt() {
+            StopEvent event = StopEvent.newInstance(arrival.getCommon(), this.props, StopEvent.EventType.Arrival);
+            GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(event);
+            GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(Long.toString(dvjId), tu, timestamp);
+            return feedMessage;
         }
     }
 

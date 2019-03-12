@@ -29,7 +29,7 @@ public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
         int lastStopTimeUpdateIndex = tripUpdate.getStopTimeUpdateCount() - 1;
         long tripLastStopTimeEventTime;
 
-        if (tripUpdate.getStopTimeUpdate(0).hasArrival()) {
+        if (tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).hasArrival()) {
             tripLastStopTimeEventTime = tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).getArrival().getTime();
         } else {
             tripLastStopTimeEventTime = tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).getDeparture().getTime();
