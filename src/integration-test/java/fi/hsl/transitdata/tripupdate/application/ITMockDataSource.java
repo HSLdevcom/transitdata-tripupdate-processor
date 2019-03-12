@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.gtfsrt.FeedMessageFactory;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -63,7 +64,7 @@ public class ITMockDataSource {
         public GtfsRealtime.FeedMessage toGtfsRt() {
             StopEvent event = StopEvent.newInstance(arrival.getCommon(), this.props, StopEvent.EventType.Arrival);
             GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(event);
-            GtfsRealtime.FeedMessage feedMessage = GtfsRtFactory.newFeedMessage(Long.toString(dvjId), tu, timestamp);
+            GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(dvjId), tu, timestamp);
             return feedMessage;
         }
     }
