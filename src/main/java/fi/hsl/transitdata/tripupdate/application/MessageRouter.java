@@ -7,6 +7,7 @@ import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
+import fi.hsl.common.transitdata.TransitdataSchema;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
@@ -63,24 +64,11 @@ public class MessageRouter implements IMessageHandler {
 
     }
 
-    private Optional<ProtobufSchema> parseProtobufSchema(Message received) {
-        try {
-            String schemaType = received.getProperty(TransitdataProperties.KEY_PROTOBUF_SCHEMA);
-            log.debug("Received message with schema type " + schemaType);
-            ProtobufSchema schema = ProtobufSchema.fromString(schemaType);
-            return Optional.of(schema);
-        }
-        catch (Exception e) {
-            log.error("Failed to parse protobuf schema", e);
-            return Optional.empty();
-        }
-    }
-
     public void handleMessage(Message received) throws Exception {
         try {
-            Optional<ProtobufSchema> maybeSchema = parseProtobufSchema(received);
+            Optional<TransitdataSchema> maybeSchema = TransitdataSchema.parseFromPulsarMessage(received);
             maybeSchema.ifPresent(schema -> {
-                IMessageProcessor processor = processors.get(schema);
+                IMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
                         GtfsRealtime.TripUpdate tripUpdate = processor.processMessage(received);
