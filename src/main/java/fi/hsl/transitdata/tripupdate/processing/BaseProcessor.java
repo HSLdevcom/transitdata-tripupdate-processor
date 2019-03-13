@@ -3,17 +3,13 @@ package fi.hsl.transitdata.tripupdate.processing;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
-import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import fi.hsl.transitdata.tripupdate.models.PubtransData;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 public abstract class BaseProcessor implements IMessageProcessor {
@@ -46,9 +42,9 @@ public abstract class BaseProcessor implements IMessageProcessor {
             PubtransData data = parseSharedData(msg);
 
             // Create TripUpdate and send it out
-            tripUpdate = tripProcessor.processStopEvent(data.toStopEstimate());
+            tripUpdate = tripProcessor.processStopEstimate(data.toStopEstimate());
         }
-        catch (InvalidProtocolBufferException e) {
+        catch (Exception e) {
             log.error("Failed to parse message payload", e);
         }
 

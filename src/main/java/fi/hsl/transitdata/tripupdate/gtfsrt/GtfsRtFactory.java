@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import java.util.concurrent.TimeUnit;
@@ -18,38 +19,44 @@ public class GtfsRtFactory {
     private GtfsRtFactory() {
     }
 
-    public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdate(StopEvent stopEvent) {
-        return newStopTimeUpdateFromPrevious(stopEvent, null);
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdate(InternalMessages.StopEstimate stopEstimate) {
+        return newStopTimeUpdateFromPrevious(stopEstimate, null);
     }
 
-    public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdateFromPrevious(StopEvent stopEvent, GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdateFromPrevious(
+            final InternalMessages.StopEstimate stopEstimate,
+            GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
         if (previousUpdate != null) {
             stopTimeUpdateBuilder = previousUpdate.toBuilder();
         } else {
+            String stopId = stopEstimate.getStopId();
+            int stopSequence = stopEstimate.getStopSequence();
             stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(String.valueOf(stopEvent.getRouteData().getStopId()))
-                    .setStopSequence(stopEvent.getStopSeq());
+                    .setStopId(stopId)
+                    .setStopSequence(stopSequence);
         }
 
-        switch (stopEvent.getScheduleRelationship()) {
-            case Skipped:
+        switch (stopEstimate.getStatus()) {
+            case SKIPPED:
                 stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
                 break;
-            case Scheduled:
+            case SCHEDULED:
                 stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED);
                 break;
         }
+        // GTFS-RT treats times in seconds
+        long stopEventTimeInSeconds = stopEstimate.getEstimatedTimeUtcMs() / 1000;
 
         GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(stopEvent.getTargetTime())
+                .setTime(stopEventTimeInSeconds)
                 .build();
-        switch (stopEvent.getEventType()) {
-            case Arrival:
+        switch (stopEstimate.getType()) {
+            case ARRIVAL:
                 stopTimeUpdateBuilder.setArrival(stopTimeEvent);
                 break;
-            case Departure:
+            case DEPARTURE:
                 stopTimeUpdateBuilder.setDeparture(stopTimeEvent);
                 break;
         }
@@ -57,18 +64,28 @@ public class GtfsRtFactory {
         return stopTimeUpdateBuilder.build();
     }
 
-    public static GtfsRealtime.TripUpdate newTripUpdate(StopEvent event) {
+    public static int pubtransDirectionToGtfsDirection(int pubtransDirection) {
+        return pubtransDirection == 1 ? DIRECTION_ID_OUTBOUND : DIRECTION_ID_INBOUND;
+    }
+
+    public static long lastModified(InternalMessages.StopEstimate estimate) {
+        return estimate.getLastModifiedUtcMs() / 1000;
+    }
+
+    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
+        final String routeName = reformatRouteName(estimate.getTripInfo().getRouteId());
+        final int direction = pubtransDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(reformatRouteName(event.getRouteData().getRouteName()))
-                .setDirectionId(event.getRouteData().getDirection())
-                .setStartDate(event.getRouteData().getOperatingDay())
-                .setStartTime(event.getRouteData().getStartTime())
+                .setRouteId(routeName)
+                .setDirectionId(direction)
+                .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
+                .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
                 .build();
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
-                .setTimestamp(event.getLastModifiedTimestamp(TimeUnit.SECONDS));
+                .setTimestamp(lastModified(estimate));
 
         return tripUpdateBuilder.build();
     }
