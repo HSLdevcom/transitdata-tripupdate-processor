@@ -8,12 +8,12 @@ import org.apache.pulsar.client.api.Message;
 public class ArrivalProcessor extends BaseProcessor {
 
     public ArrivalProcessor(TripUpdateProcessor processor) {
-        super(StopEvent.EventType.Arrival, processor);
+        super(EventType.Arrival, processor);
     }
 
-    protected PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException {
+    protected PubtransData parseSharedData(Message msg) throws InvalidProtocolBufferException {
         PubtransTableProtos.ROIArrival roiMessage = PubtransTableProtos.ROIArrival.parseFrom(msg.getData());
-        return roiMessage.getCommon();
+        return new PubtransData(eventType, roiMessage.getCommon(), roiMessage.getTripInfo());
     }
 
 }

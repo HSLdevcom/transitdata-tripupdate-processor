@@ -13,24 +13,40 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
 
-    final StopEvent.EventType eventType;
+    final EventType eventType;
 
     final TripUpdateProcessor tripProcessor;
 
-    public BaseProcessor(StopEvent.EventType eventType, TripUpdateProcessor tripProcessor) {
+    public enum EventType {
+        Arrival, Departure
+    }
+
+    public BaseProcessor(EventType eventType, TripUpdateProcessor tripProcessor) {
         this.eventType = eventType;
         this.tripProcessor = tripProcessor;
+    }
+
+    protected class PubtransData {
+
+        public PubtransTableProtos.Common common;
+        public PubtransTableProtos.DOITripInfo tripInfo;
+        public EventType eventType;
+
+        public PubtransData(EventType eventType, PubtransTableProtos.Common common, PubtransTableProtos.DOITripInfo tripInfo) {
+            this.tripInfo = tripInfo;
+            this.common = common;
+            this.eventType = eventType;
+        }
     }
 
     /**
      * Because the proto-classes don't have a common base class we need to extract the 'shared'-data with concrete implementations
      */
-    protected abstract PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException;
+    protected abstract PubtransData parseSharedData(Message msg) throws InvalidProtocolBufferException;
 
     @Override
     public GtfsRealtime.TripUpdate processMessage(Message msg) {
@@ -38,16 +54,13 @@ public abstract class BaseProcessor implements IMessageProcessor {
         GtfsRealtime.TripUpdate tripUpdate = null;
 
         try {
-            PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
-            // Create stop event
-
-            StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
+            PubtransData data = parseSharedData(msg);
 
             // Create TripUpdate and send it out
             tripUpdate = tripProcessor.processStopEvent(stop);
         }
         catch (InvalidProtocolBufferException e) {
-            log.error("Failed to parse ROIArrival from message payload", e);
+            log.error("Failed to parse message payload", e);
         }
 
         return tripUpdate;
@@ -57,7 +70,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
     public boolean validateMessage(Message msg) {
         try {
             if (validateRequiredProperties(msg.getProperties())) {
-                PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
+                PubtransTableProtos.Common common = parseSharedData(msg);
                 return validate(common);
             }
             else {
