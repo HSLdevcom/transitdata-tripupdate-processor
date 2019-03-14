@@ -2,6 +2,7 @@ package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.pulsar.*;
+import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
@@ -33,12 +34,27 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
     final int stopId = 0;
 
+
     @Test
-    public void testValidCancellation() throws Exception {
+    public void testValidCancellationWithDirection1() throws Exception {
+        final String testId = "-valid-cancel-joredir-1";
+        String routeName = MockDataUtils.generateValidRouteName();
+        testValidCancellation(routeName, 1, testId);
+    }
+
+    @Test
+    public void testValidCancellationWithDirection2() throws Exception {
+        final String testId = "-valid-cancel-joredir-2";
+        String routeName = MockDataUtils.generateValidRouteName();
+        testValidCancellation(routeName, 2, testId);
+    }
+
+    private void testValidCancellation(String routeName, int joreDir, String testId) throws Exception {
+        int gtfsDir = joreDir - 1;
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, joreDirection, dateTime);
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, routeName, joreDir, dateTime);
 
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
@@ -49,13 +65,12 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, msg.timestamp, route, gtfsRtDirection, dateTime);
+                validateCancellationPayload(feedMessage, msg.timestamp, routeName, gtfsDir, dateTime);
                 logger.info("Message read back, all good");
 
                 TestPipeline.validateAcks(1, context);
             }
         };
-        final String testId = "-test-cancel";
         PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
         IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
