@@ -38,18 +38,16 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testValidCancellationWithDirection1() throws Exception {
         final String testId = "-valid-cancel-joredir-1";
-        String routeName = MockDataUtils.generateValidRouteName();
-        testValidCancellation(routeName, 1, testId);
+        testValidCancellation(route, route,1, testId);
     }
 
     @Test
     public void testValidCancellationWithDirection2() throws Exception {
         final String testId = "-valid-cancel-joredir-2";
-        String routeName = MockDataUtils.generateValidRouteName();
-        testValidCancellation(routeName, 2, testId);
+        testValidCancellation(route, route,2, testId);
     }
 
-    private void testValidCancellation(String routeName, int joreDir, String testId) throws Exception {
+    private void testValidCancellation(String routeName, String expectedRouteName, int joreDir, String testId) throws Exception {
         int gtfsDir = joreDir - 1;
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
@@ -65,7 +63,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, msg.timestamp, routeName, gtfsDir, dateTime);
+                validateCancellationPayload(feedMessage, msg.timestamp, expectedRouteName, gtfsDir, dateTime);
                 logger.info("Message read back, all good");
 
                 TestPipeline.validateAcks(1, context);
@@ -98,6 +96,13 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         testInvalidInput(msg, "-test-running");
     }
 
+    @Test
+    public void testCancellationWithTrainRoute() throws Exception {
+        String trainRoute = "3001";
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, trainRoute, joreDirection, dateTime);
+        testInvalidInput(msg, "-test-train-route");
+    }
+
     /**
      * Convenience method for running tests that should always be filtered by the TripUpdateProcessor,
      * meaning no Gtfs-RT should ever be received. However we should get an ack to producer.
@@ -112,7 +117,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
-                //There should not be any output for Running-status since it's not supported yet
+                //There should not be any output, read should just timeout
                 assertNull(received);
                 TestPipeline.validateAcks(1, context); //sender should still get acks.
             }
