@@ -69,11 +69,11 @@ public class ITMockDataSource {
         }
     }
 
-    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction, LocalDateTime startTime) {
-        return newCancellationMessage(dvjId, routeId, direction, startTime, InternalMessages.TripCancellation.Status.CANCELED);
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int joreDirection, LocalDateTime startTime) {
+        return newCancellationMessage(dvjId, routeId, joreDirection, startTime, InternalMessages.TripCancellation.Status.CANCELED);
     }
 
-    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction,
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int joreDirection,
                                                                    LocalDateTime startTime,
                                                                    InternalMessages.TripCancellation.Status status) {
 
@@ -84,7 +84,7 @@ public class ITMockDataSource {
         String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(startTime);
 
         builder.setRouteId(routeId);
-        builder.setDirectionId(direction);
+        builder.setDirectionId(joreDirection);
         builder.setStartDate(date);
         builder.setStartTime(time);
         //Version number is defined in the proto file as default value but we still need to set it since it's a required field
