@@ -69,6 +69,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
     }
 
     static boolean validateRequiredProperties(Map<String, String> properties) {
+        //TODO remove this requirement! Read DVJ_ID from DOITripInfo Payload!
         return properties != null && properties.containsKey(TransitdataProperties.KEY_DVJ_ID);
     }
 

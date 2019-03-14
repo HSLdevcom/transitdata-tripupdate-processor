@@ -30,7 +30,7 @@ public class PubtransData {
         builder.setSchemaVersion(builder.getSchemaVersion());
 
         InternalMessages.TripInfo.Builder tripBuilder = InternalMessages.TripInfo.newBuilder();
-        tripBuilder.setTripId(Long.toString(common.getIsOnDatedVehicleJourneyId()));
+        tripBuilder.setTripId(Long.toString(tripInfo.getDvjId()));
         tripBuilder.setOperatingDay(tripInfo.getOperatingDay());
         tripBuilder.setRouteId(tripInfo.getRouteId());
         tripBuilder.setDirectionId(tripInfo.getDirectionId());//Jore format

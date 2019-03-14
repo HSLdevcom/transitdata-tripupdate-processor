@@ -18,18 +18,20 @@ public class TripUpdateProcessorTest {
     public void testStopTimeUpdateCache() throws Exception {
         TripUpdateProcessor processor = new TripUpdateProcessor(null);
 
-        final long firstDvjId = 99L;
+        final long baseDvjId = MockDataUtils.generateValidJoreId();
+
+        final String firstDvjId = Long.toString(baseDvjId);
 
         final int amount = 20;
         addStops(firstDvjId, amount, processor);
 
-        final long secondDvjId = 100L;
+        final String secondDvjId = Long.toString(baseDvjId + 1);
         final int secondAmount = amount - 1;
         addStops(secondDvjId, secondAmount, processor);
 
         validateStops(firstDvjId, amount, processor);
         validateStops(secondDvjId, secondAmount, processor);
-        final long nonExistingId = 69;
+        final String nonExistingId = Long.toString(baseDvjId + 42);
         validateStops(nonExistingId, 0, processor);
 
         //Adding stops to existing StopTimeUpdates should not increase the count, nor affect the ordering.
@@ -43,7 +45,7 @@ public class TripUpdateProcessorTest {
 
     }
 
-    private void addStops(final long dvjId, final int amount, TripUpdateProcessor processor) throws Exception {
+    private void addStops(final String dvjId, final int amount, TripUpdateProcessor processor) throws Exception {
         int counter = 0;
         while(counter < amount) {
             final int stopSequence = counter;
@@ -58,7 +60,7 @@ public class TripUpdateProcessorTest {
         }
     }
 
-    private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
+    private void addStop(String dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
         PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(dvjId, stopSequence).build();
         final int direction = 1;
         final String routeName = "69A";
@@ -72,7 +74,7 @@ public class TripUpdateProcessorTest {
         processor.updateStopTimeUpdateCache(first);
     }
 
-    private void validateStops(final long dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
+    private void validateStops(final String dvjId, final int correctAmount, TripUpdateProcessor processor) throws Exception {
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> updates = processor.getStopTimeUpdates(dvjId);
         assertEquals(updates.size(), correctAmount);
 
