@@ -47,6 +47,14 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         testValidCancellation(route, route,2, testId);
     }
 
+    @Test
+    public void testValidCancellationRouteNameFormatting() throws Exception {
+        final String testId = "-valid-cancel-routename-formatting";
+        String joreRouteName = "4250D8";
+        String formattedRouteName = "4250D";
+        testValidCancellation(joreRouteName, formattedRouteName, joreDirection, testId);
+    }
+
     private void testValidCancellation(String routeName, String expectedRouteName, int joreDir, String testId) throws Exception {
         int gtfsDir = joreDir - 1;
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
