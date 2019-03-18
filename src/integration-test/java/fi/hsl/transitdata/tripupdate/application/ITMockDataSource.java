@@ -68,12 +68,29 @@ public class ITMockDataSource {
             return feedMessage;
         }
     }
+    // TODO This SourceMessage-datamodel is broken and should be fixed but let's do that as part of larger refactoring.
+    // Some problems are caused by the fact that Protobuf-schemas (arrival & departure) don't share a common base class.
+    static class DepartureSourceMessage extends SourceMessage {
+        PubtransTableProtos.ROIDeparture departure;
 
-    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction, LocalDateTime startTime) {
-        return newCancellationMessage(dvjId, routeId, direction, startTime, InternalMessages.TripCancellation.Status.CANCELED);
+        public DepartureSourceMessage(PubtransTableProtos.ROIDeparture departure, long dvjId, long timestamp, Map<String, String> props) {
+            super(departure.toByteArray(), TransitdataProperties.ProtobufSchema.PubtransRoiDeparture, dvjId, timestamp, props);
+            this.departure = departure;
+        }
+
+        public GtfsRealtime.FeedMessage toGtfsRt() {
+            StopEvent event = StopEvent.newInstance(departure.getCommon(), this.props, StopEvent.EventType.Arrival);
+            GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(event);
+            GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(dvjId), tu, timestamp);
+            return feedMessage;
+        }
     }
 
-    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int direction,
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int joreDirection, LocalDateTime startTime) {
+        return newCancellationMessage(dvjId, routeId, joreDirection, startTime, InternalMessages.TripCancellation.Status.CANCELED);
+    }
+
+    public static CancellationSourceMessage newCancellationMessage(long dvjId, String routeId, int joreDirection,
                                                                    LocalDateTime startTime,
                                                                    InternalMessages.TripCancellation.Status status) {
 
@@ -84,7 +101,7 @@ public class ITMockDataSource {
         String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(startTime);
 
         builder.setRouteId(routeId);
-        builder.setDirectionId(direction);
+        builder.setDirectionId(joreDirection);
         builder.setStartDate(date);
         builder.setStartTime(time);
         //Version number is defined in the proto file as default value but we still need to set it since it's a required field
@@ -115,6 +132,28 @@ public class ITMockDataSource {
         //To ease testing let's use same numbers for stopSeq and stopId's.
         Map<String, String> props = new RouteData(stopSeqAndId, direction, routeId, targetTimeEpochMs / 1000).toMap();
         return new ArrivalSourceMessage(arrival, dvjId, nowMs, props);
+    }
+
+    public static DepartureSourceMessage newDepartureMessage(int startTimeOffsetInSeconds, long dvjId, String routeId, int direction, int stopSeqAndId) {
+        return newDepartureMessage(startTimeOffsetInSeconds, dvjId, routeId, direction, stopSeqAndId, false);
+    }
+
+    public static DepartureSourceMessage newDepartureMessage(int startTimeOffsetInSeconds, long dvjId, String routeId, int direction, int stopSeqAndId, boolean isViaPoint) {
+        final long nowMs = System.currentTimeMillis();
+        final long targetTimeEpochMs = nowMs + startTimeOffsetInSeconds * 1000;
+
+        PubtransTableProtos.Common.Builder commonBuilder = MockDataUtils.generateValidCommon(dvjId, stopSeqAndId, targetTimeEpochMs, nowMs);
+        MockDataUtils.setIsViaPoint(commonBuilder, isViaPoint);
+
+        PubtransTableProtos.Common common = commonBuilder.build();
+        PubtransTableProtos.ROIDeparture departure = PubtransTableProtos.ROIDeparture
+                .newBuilder()
+                .setCommon(common)
+                .build();
+
+        //To ease testing let's use same numbers for stopSeq and stopId's.
+        Map<String, String> props = new RouteData(stopSeqAndId, direction, routeId, targetTimeEpochMs / 1000).toMap();
+        return new DepartureSourceMessage(departure, dvjId, nowMs, props);
     }
 
     public static void sendPulsarMessage(Producer<byte[]> producer, SourceMessage msg) throws PulsarClientException {
