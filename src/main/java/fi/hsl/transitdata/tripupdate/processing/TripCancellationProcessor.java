@@ -31,7 +31,10 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
                 int directionId = tripCancellation.getDirectionId();
                 valid &= (directionId == 1 || directionId == 2);
-                valid &= ProcessorUtils.validateRouteName(tripCancellation.getRouteId());
+
+                String route = tripCancellation.getRouteId();
+                valid &= ProcessorUtils.validateRouteName(route);
+                valid &= !ProcessorUtils.isTrainRoute(route);
 
                 return valid;
             }

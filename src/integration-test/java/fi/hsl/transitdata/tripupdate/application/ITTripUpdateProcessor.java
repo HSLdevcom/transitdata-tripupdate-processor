@@ -2,9 +2,11 @@ package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.pulsar.*;
+import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
+import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.Message;
 import org.junit.Test;
 
@@ -15,9 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static fi.hsl.common.pulsar.TestPipeline.readOutputMessage;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.*;
 
 public class ITTripUpdateProcessor extends ITBaseTestSuite {
 
@@ -26,18 +27,41 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
 
     final long dvjId = 1234567890L;
     final String route = "7575";
-    final int direction = 2;
+    final int joreDirection = 2;
+    final int gtfsRtDirection = 1;
     final String date = "2020-12-24";
     final String time = "18:00:00";
     final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
     final int stopId = 0;
 
+
     @Test
-    public void testValidCancellation() throws Exception {
+    public void testValidCancellationWithDirection1() throws Exception {
+        final String testId = "-valid-cancel-joredir-1";
+        testValidCancellation(route, route,1, testId);
+    }
+
+    @Test
+    public void testValidCancellationWithDirection2() throws Exception {
+        final String testId = "-valid-cancel-joredir-2";
+        testValidCancellation(route, route,2, testId);
+    }
+
+    @Test
+    public void testValidCancellationRouteNameFormatting() throws Exception {
+        final String testId = "-valid-cancel-routename-formatting";
+        String joreRouteName = "4250D8";
+        String formattedRouteName = "4250D";
+        testValidCancellation(joreRouteName, formattedRouteName, joreDirection, testId);
+    }
+
+    private void testValidCancellation(String routeName, String expectedRouteName, int joreDir, String testId) throws Exception {
+        int gtfsDir = joreDir - 1;
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime);
+                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, routeName, joreDir, dateTime);
+
                 ITMockDataSource.sendPulsarMessage(context.source, msg);
                 logger.info("Message sent, reading it back");
 
@@ -47,13 +71,12 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, msg.timestamp, route, direction, dateTime);
+                validateCancellationPayload(feedMessage, msg.timestamp, expectedRouteName, gtfsDir, dateTime);
                 logger.info("Message read back, all good");
 
                 TestPipeline.validateAcks(1, context);
             }
         };
-        final String testId = "-test-cancel";
         PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
         IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
@@ -62,7 +85,8 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testCancellationWithGtfsRtDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 0, dateTime);
+        final int invalidJoreDirection = 0;
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, invalidJoreDirection, dateTime);
         testInvalidInput(msg, "-test-gtfs-dir");
     }
 
@@ -76,8 +100,15 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
         final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, direction, dateTime, runningStatus);
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, joreDirection, dateTime, runningStatus);
         testInvalidInput(msg, "-test-running");
+    }
+
+    @Test
+    public void testCancellationWithTrainRoute() throws Exception {
+        String trainRoute = "3001";
+        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, trainRoute, joreDirection, dateTime);
+        testInvalidInput(msg, "-test-train-route");
     }
 
     /**
@@ -94,7 +125,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
-                //There should not be any output for Running-status since it's not supported yet
+                //There should not be any output, read should just timeout
                 assertNull(received);
                 TestPipeline.validateAcks(1, context); //sender should still get acks.
             }
@@ -107,7 +138,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     private void validateCancellationPayload(final GtfsRealtime.FeedMessage feedMessage,
                                              final long eventTimeMs,
                                              final String routeId,
-                                             final int direction,
+                                             final int gtfsRtDirection,
                                              final LocalDateTime eventTimeLocal) {
         assertNotNull(feedMessage);
         assertEquals(1, feedMessage.getEntityCount());
@@ -122,7 +153,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
         assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, trip.getScheduleRelationship());
         assertEquals(routeId, trip.getRouteId());
-        assertEquals(direction, trip.getDirectionId());
+        assertEquals(gtfsRtDirection, trip.getDirectionId());
 
         String localDate = gtfsRtDatePattern.format(eventTimeLocal);
         String localTime = gtfsRtTimePattern.format(eventTimeLocal);
@@ -131,25 +162,52 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(localTime, trip.getStartTime());
     }
 
+    @Test
+    public void testValidArrivalStopEvent() throws Exception {
+        int startTimeOffsetInSeconds = 5 * 60;
+        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        testValidStopEvent(msg);
+    }
 
     @Test
-    public void testValidStopEvent() throws Exception {
+    public void testValidDepartureStopEvent() throws Exception {
+        int startTimeOffsetInSeconds = 5 * 60;
+        ITMockDataSource.DepartureSourceMessage msg = ITMockDataSource.newDepartureMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        testValidStopEvent(msg);
+    }
+
+    private void testValidStopEvent(ITMockDataSource.SourceMessage sourceMsg) throws Exception {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                int startTimeOffsetInSeconds = 5 * 60;
-                ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, direction, stopId);
-                ITMockDataSource.sendPulsarMessage(context.source, msg);
+
+                ITMockDataSource.sendPulsarMessage(context.source, sourceMsg);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                validatePulsarProperties(received, Long.toString(dvjId), sourceMsg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 assertNotNull(feedMessage);
-                //validateCancellationPayload(feedMessage, dvjId, msg.timestamp, route, direction, dateTime);
+                assertEquals(1, feedMessage.getEntityCount());
+                GtfsRealtime.TripUpdate tu = feedMessage.getEntity(0).getTripUpdate();
+                assertNotNull(tu);
+
+                assertEquals(1, tu.getStopTimeUpdateCount());
+                GtfsRealtime.TripUpdate.StopTimeUpdate update = tu.getStopTimeUpdate(0);
+                assertNotNull(update);
+
+                assertIfArrivalAndDepartureDiffer(update);
+
+                assertEquals(Integer.toString(stopId), update.getStopId());
+
+                assertTrue(tu.hasTrip());
+                GtfsRealtime.TripDescriptor tripDescriptor = tu.getTrip();
+                assertEquals(gtfsRtDirection, tripDescriptor.getDirectionId());
+                assertEquals(route, tripDescriptor.getRouteId());
+
                 logger.info("Message read back, all good");
                 TestPipeline.validateAcks(1, context);
             }
@@ -161,10 +219,18 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
+    private void assertIfArrivalAndDepartureDiffer(GtfsRealtime.TripUpdate.StopTimeUpdate update) {
+        // We currently always have both StopTimeUpdates (arrival and departure) for OpenTripPlanner,
+        // If only one of them is sent we add identical one to the other field
+        assertTrue(update.hasArrival());
+        assertTrue(update.hasDeparture());
+        assertEquals(update.getArrival(), update.getDeparture());
+    }
+
     @Test
     public void testViaPointStopEvent() throws Exception {
         int startTimeOffsetInSeconds = 5 * 60;
-        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, direction, stopId, true);
+        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId, true);
         testInvalidInput(msg,"-test-viapoint");
     }
 
@@ -182,7 +248,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         input.add(dummyData);
 
         //Then a real message
-        ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, direction, stopId);
+        ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, joreDirection, stopId);
         Map<String, String> properties = arrival.props;
         properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(arrival.dvjId));
         properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, arrival.schema.toString());
