@@ -74,7 +74,7 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
-        final int gtfsRtDirection = StopEvent.pubtransDirectionToGtfsDirection(cancellation.getDirectionId());
+        final int gtfsRtDirection = StopEvent.joreDirectionToGtfsDirection(cancellation.getDirectionId());
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(reformatRouteName(cancellation.getRouteId()))
                 .setDirectionId(gtfsRtDirection)
