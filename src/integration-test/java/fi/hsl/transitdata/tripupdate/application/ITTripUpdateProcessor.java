@@ -162,21 +162,32 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(localTime, trip.getStartTime());
     }
 
+    @Test
+    public void testValidArrivalStopEvent() throws Exception {
+        int startTimeOffsetInSeconds = 5 * 60;
+        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        testValidStopEvent(msg);
+    }
 
     @Test
-    public void testValidStopEvent() throws Exception {
+    public void testValidDepartureStopEvent() throws Exception {
+        int startTimeOffsetInSeconds = 5 * 60;
+        ITMockDataSource.DepartureSourceMessage msg = ITMockDataSource.newDepartureMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        testValidStopEvent(msg);
+    }
+
+    private void testValidStopEvent(ITMockDataSource.SourceMessage sourceMsg) throws Exception {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                int startTimeOffsetInSeconds = 5 * 60;
-                ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
-                ITMockDataSource.sendPulsarMessage(context.source, msg);
+
+                ITMockDataSource.sendPulsarMessage(context.source, sourceMsg);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                validatePulsarProperties(received, Long.toString(dvjId), sourceMsg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 assertNotNull(feedMessage);
