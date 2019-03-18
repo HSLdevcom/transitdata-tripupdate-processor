@@ -24,7 +24,7 @@ import java.util.Map;
  */
 public class ITMockDataSource {
     private ITMockDataSource() {}
-
+    /*
     static class SourceMessage {
         public SourceMessage(byte[] payload, TransitdataProperties.ProtobufSchema schema, long dvjId, long timestamp) {
             this(payload, schema, dvjId, timestamp, new HashMap<>());
@@ -154,17 +154,6 @@ public class ITMockDataSource {
         //To ease testing let's use same numbers for stopSeq and stopId's.
         Map<String, String> props = new RouteData(stopSeqAndId, direction, routeId, targetTimeEpochMs / 1000).toMap();
         return new DepartureSourceMessage(departure, dvjId, nowMs, props);
-    }
+    }*/
 
-    public static void sendPulsarMessage(Producer<byte[]> producer, SourceMessage msg) throws PulsarClientException {
-        String dvjIdAsString = Long.toString(msg.dvjId);
-        TypedMessageBuilder<byte[]> builder = producer.newMessage().value(msg.payload)
-                .eventTime(msg.timestamp)
-                .key(dvjIdAsString)
-                .property(TransitdataProperties.KEY_DVJ_ID, dvjIdAsString)
-                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, msg.schema.toString());
-
-        msg.props.forEach((key, value) -> builder.property(key, value));
-        builder.send();
-    }
 }

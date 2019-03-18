@@ -5,9 +5,10 @@ import fi.hsl.common.pulsar.*;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static fi.hsl.common.pulsar.TestPipeline.readOutputMessage;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.*;
 
@@ -60,18 +60,18 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, routeName, joreDir, dateTime);
-
-                ITMockDataSource.sendPulsarMessage(context.source, msg);
+                final long ts = System.currentTimeMillis();
+                InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(routeName, joreDir, dateTime);
+                sendCancellationPulsarMessage(context.source, dvjId, ts, cancellation);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, Long.toString(dvjId), msg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                validatePulsarProperties(received, Long.toString(dvjId), ts, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
-                validateCancellationPayload(feedMessage, msg.timestamp, expectedRouteName, gtfsDir, dateTime);
+                validateCancellationPayload(feedMessage, ts, expectedRouteName, gtfsDir, dateTime);
                 logger.info("Message read back, all good");
 
                 TestPipeline.validateAcks(1, context);
@@ -86,29 +86,29 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     public void testCancellationWithGtfsRtDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
         final int invalidJoreDirection = 0;
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, invalidJoreDirection, dateTime);
-        testInvalidInput(msg, "-test-gtfs-dir");
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, invalidJoreDirection, dateTime);
+        testInvalidInput(cancellation, "-test-gtfs-dir");
     }
 
     @Test
     public void testCancellationWithInvalidDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, 10, dateTime);
-        testInvalidInput(msg, "-test-invalid-dir");
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime);
+        testInvalidInput(cancellation, "-test-invalid-dir");
     }
 
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
         final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, route, joreDirection, dateTime, runningStatus);
-        testInvalidInput(msg, "-test-running");
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime, runningStatus);
+        testInvalidInput(cancellation, "-test-running");
     }
 
     @Test
     public void testCancellationWithTrainRoute() throws Exception {
         String trainRoute = "3001";
-        ITMockDataSource.CancellationSourceMessage msg = ITMockDataSource.newCancellationMessage(dvjId, trainRoute, joreDirection, dateTime);
-        testInvalidInput(msg, "-test-train-route");
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(trainRoute, joreDirection, dateTime);
+        testInvalidInput(cancellation, "-test-train-route");
     }
 
     /**
@@ -117,11 +117,12 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
      *
      * @throws Exception
      */
-    private void testInvalidInput(final ITMockDataSource.SourceMessage somethingWrongWithPayload, String testId) throws Exception {
+    private void testInvalidInput(final InternalMessages.TripCancellation cancellation, String testId) throws Exception {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
-                ITMockDataSource.sendPulsarMessage(context.source, somethingWrongWithPayload);
+                final long ts = System.currentTimeMillis();
+                sendCancellationPulsarMessage(context.source, dvjId, ts, cancellation);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
@@ -181,7 +182,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
 
-                ITMockDataSource.sendPulsarMessage(context.source, sourceMsg);
+                sendPulsarMessage(context.source, sourceMsg);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
@@ -285,5 +286,21 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
         IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
+    }
+
+    static void sendCancellationPulsarMessage(Producer<byte[]> producer, long dvjId, long timestampEpochMs, InternalMessages.TripCancellation cancellation) throws PulsarClientException {
+       sendPulsarMessage(producer, dvjId, cancellation.toByteArray(), timestampEpochMs, TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation);
+    }
+
+    static void sendPulsarMessage(Producer<byte[]> producer, long dvjId, byte[] payload, long timestampEpochMs, TransitdataProperties.ProtobufSchema schema) throws PulsarClientException {
+        String dvjIdAsString = Long.toString(dvjId);
+        TypedMessageBuilder<byte[]> builder = producer.newMessage().value(payload)
+                .eventTime(timestampEpochMs)
+                .key(dvjIdAsString)
+                .property(TransitdataProperties.KEY_DVJ_ID, dvjIdAsString)
+                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, schema.toString());
+
+        //msg.props.forEach((key, value) -> builder.property(key, value));
+        builder.send();
     }
 }
