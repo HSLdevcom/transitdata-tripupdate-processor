@@ -187,10 +187,9 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 assertEquals(1, tu.getStopTimeUpdateCount());
                 GtfsRealtime.TripUpdate.StopTimeUpdate update = tu.getStopTimeUpdate(0);
                 assertNotNull(update);
-                assertTrue(update.hasArrival());
 
-                // We add departure also which should be the same as arrival?
-                //assertFalse(update.hasDeparture());
+                assertIfArrivalAndDepartureDiffer(update);
+
                 assertEquals(Integer.toString(stopId), update.getStopId());
 
                 assertTrue(tu.hasTrip());
@@ -207,6 +206,14 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
         IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
+    }
+
+    private void assertIfArrivalAndDepartureDiffer(GtfsRealtime.TripUpdate.StopTimeUpdate update) {
+        // We currently always have both StopTimeUpdates (arrival and departure) for OpenTripPlanner,
+        // If only one of them is sent we add identical one to the other field
+        assertTrue(update.hasArrival());
+        assertTrue(update.hasDeparture());
+        assertEquals(update.getArrival(), update.getDeparture());
     }
 
     @Test
