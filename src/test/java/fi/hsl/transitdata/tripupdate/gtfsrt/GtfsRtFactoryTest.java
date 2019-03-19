@@ -3,8 +3,6 @@ package fi.hsl.transitdata.tripupdate.gtfsrt;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.transitdata.tripupdate.MockDataFactory;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertEquals;
