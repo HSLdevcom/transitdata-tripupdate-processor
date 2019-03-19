@@ -2,6 +2,7 @@ package fi.hsl.transitdata.tripupdate.application;
 
 import fi.hsl.common.pulsar.PulsarMessageData;
 import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 
 import java.util.HashMap;
@@ -31,4 +32,11 @@ public class PubtransPulsarMessageData<T extends com.google.protobuf.GeneratedMe
             super(actualPayload, TransitdataProperties.ProtobufSchema.PubtransRoiDeparture, eventTime, dvjId);
         }
     }
+
+    public static class CancellationPulsarMessageData extends PubtransPulsarMessageData<InternalMessages.TripCancellation> {
+        public CancellationPulsarMessageData(InternalMessages.TripCancellation actualPayload, Long eventTime, long dvjId) {
+            super(actualPayload, TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation, eventTime, dvjId);
+        }
+    }
+
 }
