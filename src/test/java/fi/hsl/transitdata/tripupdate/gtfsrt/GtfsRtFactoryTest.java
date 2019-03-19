@@ -12,7 +12,7 @@ import static junit.framework.TestCase.assertEquals;
 public class GtfsRtFactoryTest {
 
     @Test
-    public void newTripUpdateFromStopEventWithLetterAndNumberIsRenamedProperly() {
+    public void newTripUpdateFromStopEventWithLetterAndNumberIsRenamedProperly() throws Exception {
         InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("1010H4");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
 
@@ -20,7 +20,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromStopEventWithSpaceAndNumberIsRenamedProperly() {
+    public void newTripUpdateFromStopEventWithSpaceAndNumberIsRenamedProperly() throws Exception {
 
         InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("1010 3");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
@@ -29,7 +29,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromStopEventWithFourCharactersIsNotRenamed() {
+    public void newTripUpdateFromStopEventWithFourCharactersIsNotRenamed() throws Exception {
 
         InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("1010");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
@@ -38,7 +38,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromStopEventWithOneLetterIsNotRenamed() {
+    public void newTripUpdateFromStopEventWithOneLetterIsNotRenamed() throws Exception {
 
         InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("1010H");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
@@ -47,7 +47,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromStopEventWithTwoLettersIsNotRenamed() {
+    public void newTripUpdateFromStopEventWithTwoLettersIsNotRenamed() throws Exception {
 
         InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("1010HK");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
