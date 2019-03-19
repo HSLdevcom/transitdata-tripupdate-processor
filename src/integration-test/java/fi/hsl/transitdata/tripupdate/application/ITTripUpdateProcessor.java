@@ -175,7 +175,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, joreDirection, stopId, eventTime);
 
         PubtransPulsarMessageData.ArrivalPulsarMessageData msg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
-        testValidStopEvent(msg);
+        testValidStopEvent(msg, "-test-valid-arrival");
     }
 
     @Test
@@ -185,10 +185,10 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         PubtransTableProtos.ROIDeparture departure = MockDataUtils.mockROIDeparture(dvjId, route, joreDirection, stopId, eventTime);
 
         PubtransPulsarMessageData.DeparturePulsarMessageData msg = new PubtransPulsarMessageData.DeparturePulsarMessageData(departure, now, dvjId);
-        testValidStopEvent(msg);
+        testValidStopEvent(msg, "-test-valid-departure");
     }
 
-    private void testValidStopEvent(PubtransPulsarMessageData sourceMsg) throws Exception {
+    private void testValidStopEvent(PubtransPulsarMessageData sourceMsg, String testId) throws Exception {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
@@ -227,7 +227,6 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
             }
         };
 
-        final String testId = "-test-valid-stop";
         PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
         IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
@@ -241,13 +240,26 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(update.getArrival(), update.getDeparture());
     }
 
-    /*
-    TODO add back
+/*
     @Test
     public void testViaPointStopEvent() throws Exception {
-        int startTimeOffsetInSeconds = 5 * 60;
-        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId, true);
-        testInvalidInput(msg,"-test-viapoint");
+        PubtransTableProtos.Common.Builder builder = MockDataUtils.commonBoilerplate();
+        MockDataUtils.setIsViaPoint(builder, true);
+        PubtransTableProtos.Common common = builder.build();
+
+        PubtransTableProtos.DOITripInfo tripInfo = MockDataUtils.mockDOITripInfo(common.getIsOnDatedVehicleJourneyId(), route, stopId, joreDirection);
+
+        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(common, tripInfo);
+        //long eventTime = now + 5 * 60000; // event to happen five minutes from now
+        //PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, joreDirection, stopId, eventTime);
+
+        long now = System.currentTimeMillis();
+
+        PubtransPulsarMessageData.ArrivalPulsarMessageData msg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(
+                arrival, now, common.getIsOnDatedVehicleJourneyId());
+        testInvalidInput(msg, "-test-viapoint");
+
+
     }*/
 
     @Test
