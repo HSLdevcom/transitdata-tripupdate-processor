@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 
 import java.util.regex.Matcher;
@@ -62,17 +63,13 @@ public class GtfsRtFactory {
         return stopTimeUpdateBuilder.build();
     }
 
-    public static int joreDirectionToGtfsDirection(int joreDirection) {
-        return joreDirection == 1 ? DIRECTION_ID_OUTBOUND : DIRECTION_ID_INBOUND;
-    }
-
     public static long lastModified(InternalMessages.StopEstimate estimate) {
         return estimate.getLastModifiedUtcMs() / 1000;
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
         final String routeName = reformatRouteName(estimate.getTripInfo().getRouteId());
-        final int direction = joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
+        final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(routeName)
@@ -89,7 +86,7 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
-        final int gtfsRtDirection = joreDirectionToGtfsDirection(cancellation.getDirectionId());
+        final int gtfsRtDirection = PubtransFactory.joreDirectionToGtfsDirection(cancellation.getDirectionId());
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(reformatRouteName(cancellation.getRouteId()))
                 .setDirectionId(gtfsRtDirection)
