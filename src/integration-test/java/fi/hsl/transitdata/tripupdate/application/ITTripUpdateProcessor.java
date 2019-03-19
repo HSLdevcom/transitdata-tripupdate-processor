@@ -269,14 +269,9 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, eventTime);
 
         PubtransPulsarMessageData.ArrivalPulsarMessageData validMsg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
-
-        //ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, joreDirection, stopId);
-        //Map<String, String> properties = arrival.props;
-        //properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(arrival.dvjId));
-        //properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, arrival.schema.toString());
-        //PulsarMessageData validMsg = new PulsarMessageData(arrival.payload, arrival.timestamp, Long.toString(arrival.dvjId), properties);
         input.add(validMsg);
         GtfsRealtime.FeedMessage asFeedMessage = toGtfsRt(validMsg);
+
         //Expected output is GTFS-RT TripUpdate
         Map<String, String> outputProperties = new HashMap<>();
         outputProperties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString());
@@ -297,9 +292,15 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                     long expectedPulsarTimestampInMs = validMsg.eventTime.get();
                     assertEquals(expectedPulsarTimestampInMs, (long)received.eventTime.get()); // This should be in ms
 
-                    GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.parseFrom(received.payload);
-                    assertNotNull(entity);
+                    GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.payload);
+                    assertNotNull(feedMessage);
+                    assertEquals(expectedPulsarTimestampInMs / 1000, feedMessage.getHeader().getTimestamp());
 
+                    GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
+                    assertTrue(entity.hasTripUpdate());
+                    assertFalse(entity.hasAlert());
+                    assertFalse(entity.hasVehicle());
+                    assertEquals(Long.toString(validMsg.dvjId), entity.getId());
                 }
                 catch (Exception e) {
                     logger.error("Failed to validate message", e);
@@ -321,8 +322,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 arrival.getTripInfo(),
                 InternalMessages.StopEstimate.Type.ARRIVAL);
         GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(estimate);
-        //StopEvent event = StopEvent.newInstance(arrival.getCommon(), this.props, StopEvent.EventType.Arrival);
-        //GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(event);
+
         Long timestampAsSecs = arrivalMsg.eventTime.map(utcMs -> utcMs / 1000).get();
         GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(arrivalMsg.dvjId), tu, timestampAsSecs);
         return feedMessage;
