@@ -57,7 +57,7 @@ public class StopEvent {
     public enum EventType {
         Arrival, Departure
     }
-
+/*
     public static StopEvent newInstance(PubtransTableProtos.Common common, Map<String, String> properties, StopEvent.EventType type) {
         StopEvent event = new StopEvent();
         event.dvjId = common.getIsOnDatedVehicleJourneyId();
@@ -112,5 +112,5 @@ public class StopEvent {
 
     public long getLastModifiedTimestamp(TimeUnit unit) {
         return unit.convert(lastModifiedTimestamp, TimeUnit.MILLISECONDS);
-    }
+    }*/
 }

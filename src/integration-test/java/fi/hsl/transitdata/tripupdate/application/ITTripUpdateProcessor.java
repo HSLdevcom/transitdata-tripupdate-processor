@@ -1,10 +1,14 @@
 package fi.hsl.transitdata.tripupdate.application;
 
 import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.gtfsrt.FeedMessageFactory;
 import fi.hsl.common.pulsar.*;
 import fi.hsl.common.transitdata.MockDataUtils;
+import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.common.transitdata.proto.PubtransTableProtos;
+import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -33,7 +37,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     final String time = "18:00:00";
     final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
     final int stopId = 0;
-
+    final int stopSequence = MockDataUtils.generateValidStopSequenceId();
 
     @Test
     public void testValidCancellationWithDirection1() throws Exception {
@@ -163,32 +167,40 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(localTime, trip.getStartTime());
     }
 
+
     @Test
     public void testValidArrivalStopEvent() throws Exception {
-        int startTimeOffsetInSeconds = 5 * 60;
-        ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        long now = System.currentTimeMillis();
+        long eventTime = now + 5 * 60000; // event to happen five minutes from now
+        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, joreDirection, stopId, eventTime);
+
+        PubtransPulsarMessageData.ArrivalPulsarMessageData msg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
         testValidStopEvent(msg);
     }
 
     @Test
     public void testValidDepartureStopEvent() throws Exception {
-        int startTimeOffsetInSeconds = 5 * 60;
-        ITMockDataSource.DepartureSourceMessage msg = ITMockDataSource.newDepartureMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId);
+        long now = System.currentTimeMillis();
+        long eventTime = now + 3 * 60000; // event to happen three minutes from now
+        PubtransTableProtos.ROIDeparture departure = MockDataUtils.mockROIDeparture(dvjId, route, joreDirection, stopId, eventTime);
+
+        PubtransPulsarMessageData.DeparturePulsarMessageData msg = new PubtransPulsarMessageData.DeparturePulsarMessageData(departure, now, dvjId);
         testValidStopEvent(msg);
     }
 
-    private void testValidStopEvent(ITMockDataSource.SourceMessage sourceMsg) throws Exception {
+    private void testValidStopEvent(PubtransPulsarMessageData sourceMsg) throws Exception {
         TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
 
-                sendPulsarMessage(context.source, sourceMsg);
+                sendPubtransSourcePulsarMessage(context.source, sourceMsg);
                 logger.info("Message sent, reading it back");
 
                 Message<byte[]> received = TestPipeline.readOutputMessage(context);
                 assertNotNull(received);
 
-                validatePulsarProperties(received, Long.toString(dvjId), sourceMsg.timestamp, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                String expectedKey = Long.toString(sourceMsg.dvjId);
+                validatePulsarProperties(received, expectedKey, sourceMsg.eventTime.get(), TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
 
                 GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.getData());
                 assertNotNull(feedMessage);
@@ -202,7 +214,8 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
 
                 assertIfArrivalAndDepartureDiffer(update);
 
-                assertEquals(Integer.toString(stopId), update.getStopId());
+                assertFalse(update.hasStopSequence()); // We don't include stopSequence since it's our via-points etc can confuse the feed.
+                assertTrue(update.hasStopId()); // TODO add check for StopId
 
                 assertTrue(tu.hasTrip());
                 GtfsRealtime.TripDescriptor tripDescriptor = tu.getTrip();
@@ -228,12 +241,14 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(update.getArrival(), update.getDeparture());
     }
 
+    /*
+    TODO add back
     @Test
     public void testViaPointStopEvent() throws Exception {
         int startTimeOffsetInSeconds = 5 * 60;
         ITMockDataSource.ArrivalSourceMessage msg = ITMockDataSource.newArrivalMessage(startTimeOffsetInSeconds, dvjId, route, joreDirection, stopId, true);
         testInvalidInput(msg,"-test-viapoint");
-    }
+    }*/
 
     @Test
     public void testGarbageInput() throws Exception {
@@ -249,17 +264,25 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         input.add(dummyData);
 
         //Then a real message
-        ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, joreDirection, stopId);
-        Map<String, String> properties = arrival.props;
-        properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(arrival.dvjId));
-        properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, arrival.schema.toString());
-        PulsarMessageData validMsg = new PulsarMessageData(arrival.payload, arrival.timestamp, Long.toString(arrival.dvjId), properties);
+        final long now = System.currentTimeMillis();
+        final long eventTime = now + 60000; //One minute from now
+        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, eventTime);
+
+        PubtransPulsarMessageData.ArrivalPulsarMessageData validMsg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
+
+        //ITMockDataSource.ArrivalSourceMessage arrival = ITMockDataSource.newArrivalMessage(0, dvjId, route, joreDirection, stopId);
+        //Map<String, String> properties = arrival.props;
+        //properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(arrival.dvjId));
+        //properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, arrival.schema.toString());
+        //PulsarMessageData validMsg = new PulsarMessageData(arrival.payload, arrival.timestamp, Long.toString(arrival.dvjId), properties);
         input.add(validMsg);
-        GtfsRealtime.FeedMessage asFeedMessage = arrival.toGtfsRt();
+        GtfsRealtime.FeedMessage asFeedMessage = toGtfsRt(validMsg);
         //Expected output is GTFS-RT TripUpdate
         Map<String, String> outputProperties = new HashMap<>();
         outputProperties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString());
-        PulsarMessageData validOutput = new PulsarMessageData(asFeedMessage.toByteArray(), arrival.timestamp, Long.toString(arrival.dvjId), outputProperties);
+        final long expectedTimestamp = asFeedMessage.getHeader().getTimestamp();
+        final String expectedKey = validMsg.key.get();
+        PulsarMessageData validOutput = new PulsarMessageData(asFeedMessage.toByteArray(), expectedTimestamp, expectedKey, outputProperties);
         expectedOutput.add(validOutput);
 
         TestPipeline.MultiMessageTestLogic logic = new TestPipeline.MultiMessageTestLogic(input, expectedOutput) {
@@ -269,8 +292,10 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                     assertNotNull(expected);
                     assertNotNull(received);
                     assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.properties.get(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
-                    assertEquals(Long.toString(arrival.dvjId), received.key.get());
-                    assertEquals(arrival.timestamp, (long)received.eventTime.get());
+                    assertEquals(validMsg.key.get(), received.key.get());
+
+                    long expectedPulsarTimestampInMs = validMsg.eventTime.get();
+                    assertEquals(expectedPulsarTimestampInMs, (long)received.eventTime.get()); // This should be in ms
 
                     GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.parseFrom(received.payload);
                     assertNotNull(entity);
@@ -288,8 +313,28 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
+    private GtfsRealtime.FeedMessage toGtfsRt(PubtransPulsarMessageData.ArrivalPulsarMessageData arrivalMsg) throws Exception {
+        PubtransTableProtos.ROIArrival arrival = arrivalMsg.actualPayload;
+
+        InternalMessages.StopEstimate estimate = PubtransFactory.createStopEstimate(
+                arrival.getCommon(),
+                arrival.getTripInfo(),
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(estimate);
+        //StopEvent event = StopEvent.newInstance(arrival.getCommon(), this.props, StopEvent.EventType.Arrival);
+        //GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(event);
+        Long timestampAsSecs = arrivalMsg.eventTime.map(utcMs -> utcMs / 1000).get();
+        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(arrivalMsg.dvjId), tu, timestampAsSecs);
+        return feedMessage;
+    }
+
+
     static void sendCancellationPulsarMessage(Producer<byte[]> producer, long dvjId, long timestampEpochMs, InternalMessages.TripCancellation cancellation) throws PulsarClientException {
        sendPulsarMessage(producer, dvjId, cancellation.toByteArray(), timestampEpochMs, TransitdataProperties.ProtobufSchema.InternalMessagesTripCancellation);
+    }
+
+    static void sendPubtransSourcePulsarMessage(Producer<byte[]> producer, PubtransPulsarMessageData data) throws PulsarClientException {
+        sendPulsarMessage(producer, data.dvjId, data.payload, data.eventTime.get(), data.schema);
     }
 
     static void sendPulsarMessage(Producer<byte[]> producer, long dvjId, byte[] payload, long timestampEpochMs, TransitdataProperties.ProtobufSchema schema) throws PulsarClientException {
@@ -300,7 +345,6 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 .property(TransitdataProperties.KEY_DVJ_ID, dvjIdAsString)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, schema.toString());
 
-        //msg.props.forEach((key, value) -> builder.property(key, value));
         builder.send();
     }
 }

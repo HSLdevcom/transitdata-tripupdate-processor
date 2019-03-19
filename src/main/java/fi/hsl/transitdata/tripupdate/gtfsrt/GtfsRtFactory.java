@@ -1,10 +1,8 @@
 package fi.hsl.transitdata.tripupdate.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
-import java.util.concurrent.TimeUnit;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,8 +62,8 @@ public class GtfsRtFactory {
         return stopTimeUpdateBuilder.build();
     }
 
-    public static int pubtransDirectionToGtfsDirection(int pubtransDirection) {
-        return pubtransDirection == 1 ? DIRECTION_ID_OUTBOUND : DIRECTION_ID_INBOUND;
+    public static int joreDirectionToGtfsDirection(int joreDirection) {
+        return joreDirection == 1 ? DIRECTION_ID_OUTBOUND : DIRECTION_ID_INBOUND;
     }
 
     public static long lastModified(InternalMessages.StopEstimate estimate) {
@@ -74,7 +72,7 @@ public class GtfsRtFactory {
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
         final String routeName = reformatRouteName(estimate.getTripInfo().getRouteId());
-        final int direction = pubtransDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
+        final int direction = joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(routeName)
@@ -91,7 +89,7 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
-        final int gtfsRtDirection = StopEvent.joreDirectionToGtfsDirection(cancellation.getDirectionId());
+        final int gtfsRtDirection = joreDirectionToGtfsDirection(cancellation.getDirectionId());
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(reformatRouteName(cancellation.getRouteId()))
                 .setDirectionId(gtfsRtDirection)
