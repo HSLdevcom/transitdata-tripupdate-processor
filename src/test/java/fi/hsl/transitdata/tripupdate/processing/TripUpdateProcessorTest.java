@@ -44,7 +44,7 @@ public class TripUpdateProcessorTest {
         int counter = 0;
         while(counter < amount) {
             final int stopSequence = counter;
-            final int stopId = stopSequence;
+            final int stopId = stopSequence; // we can just use the same id here
             counter++;
 
             addStop(dvjId, stopId, stopSequence, processor);
@@ -57,15 +57,9 @@ public class TripUpdateProcessorTest {
     }
 
     private void addStop(long dvjId, long stopId, int stopSequence, TripUpdateProcessor processor) throws Exception {
-        /*PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(dvjId, stopSequence).build();
-        final int direction = 1;
-        final String routeName = "69A";
-        final String operatingDay = "monday";
-        final String startTime = "2010-10-25 14:05:05";*/
         final long fixedTargetDateTime = 1545692705000L;
-        //Map<String, String> props = new RouteData(stopId, direction, routeName, operatingDay, startTime).toMap();
-        //StopEvent first = StopEvent.newInstance(common, props, StopEvent.EventType.Arrival);
-        InternalMessages.StopEstimate estimate = MockDataUtils.mockStopEstimate(dvjId, InternalMessages.StopEstimate.Type.ARRIVAL, stopId, stopSequence, fixedTargetDateTime);
+        InternalMessages.StopEstimate estimate = MockDataUtils.mockStopEstimate(dvjId,
+                InternalMessages.StopEstimate.Type.ARRIVAL, stopId, stopSequence, fixedTargetDateTime);
         //Update cache
         processor.updateStopTimeUpdateCache(estimate);
     }
