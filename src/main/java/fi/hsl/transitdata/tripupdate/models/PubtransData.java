@@ -36,8 +36,7 @@ public class PubtransData {
         tripBuilder.setDirectionId(tripInfo.getDirectionId());//Jore format
         tripBuilder.setStartTime(tripInfo.getStartTime());
         builder.setTripInfo(tripBuilder.build());
-        //NOTICE!!! Previous implementation of Internal model (StopEvent) converted Jore dir to GTFS-RT direction already here!!
-        builder.setStopId(tripInfo.getStopId()); //Use to be Long in old internal model
+        builder.setStopId(tripInfo.getStopId());
         builder.setStopSequence(common.getJourneyPatternSequenceNumber());
 
         InternalMessages.StopEstimate.Status scheduledStatus = (common.getState() == 3L) ?
@@ -49,8 +48,7 @@ public class PubtransData {
         builder.setType(eventType == BaseProcessor.EventType.Arrival ?
                 InternalMessages.StopEstimate.Type.ARRIVAL:
                 InternalMessages.StopEstimate.Type.DEPARTURE);
-        builder.setEstimatedTimeUtcMs(common.getTargetUtcDateTimeMs()); //NOTICE!! Previous impl used seconds as targettime!! GTFS-RT demands that also
-        // builder.setScheduledTimeUtcMs(..); // This we don't have here atm, and it's optional.
+        builder.setEstimatedTimeUtcMs(common.getTargetUtcDateTimeMs());
         builder.setLastModifiedUtcMs(common.getLastModifiedUtcDateTimeMs());
         return builder.build();
     }
