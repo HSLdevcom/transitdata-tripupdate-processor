@@ -5,24 +5,25 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
+import fi.hsl.transitdata.tripupdate.models.PubtransData;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
 
-    final StopEvent.EventType eventType;
+    final EventType eventType;
 
     final TripUpdateProcessor tripProcessor;
 
-    public BaseProcessor(StopEvent.EventType eventType, TripUpdateProcessor tripProcessor) {
+    public enum EventType {
+        Arrival, Departure
+    }
+
+    public BaseProcessor(EventType eventType, TripUpdateProcessor tripProcessor) {
         this.eventType = eventType;
         this.tripProcessor = tripProcessor;
     }
@@ -30,7 +31,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
     /**
      * Because the proto-classes don't have a common base class we need to extract the 'shared'-data with concrete implementations
      */
-    protected abstract PubtransTableProtos.Common parseSharedDataFromMessage(Message msg) throws InvalidProtocolBufferException;
+    protected abstract PubtransData parseSharedData(Message msg) throws InvalidProtocolBufferException;
 
     @Override
     public GtfsRealtime.TripUpdate processMessage(Message msg) {
@@ -38,16 +39,13 @@ public abstract class BaseProcessor implements IMessageProcessor {
         GtfsRealtime.TripUpdate tripUpdate = null;
 
         try {
-            PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
-            // Create stop event
-
-            StopEvent stop = StopEvent.newInstance(common, msg.getProperties(), this.eventType);
+            PubtransData data = parseSharedData(msg);
 
             // Create TripUpdate and send it out
-            tripUpdate = tripProcessor.processStopEvent(stop);
+            tripUpdate = tripProcessor.processStopEstimate(data.toStopEstimate());
         }
-        catch (InvalidProtocolBufferException e) {
-            log.error("Failed to parse ROIArrival from message payload", e);
+        catch (Exception e) {
+            log.error("Failed to parse message payload", e);
         }
 
         return tripUpdate;
@@ -57,8 +55,8 @@ public abstract class BaseProcessor implements IMessageProcessor {
     public boolean validateMessage(Message msg) {
         try {
             if (validateRequiredProperties(msg.getProperties())) {
-                PubtransTableProtos.Common common = parseSharedDataFromMessage(msg);
-                return validate(common);
+                PubtransData data = parseSharedData(msg);
+                return validate(data);
             }
             else {
                 return false;
@@ -71,42 +69,19 @@ public abstract class BaseProcessor implements IMessageProcessor {
     }
 
     static boolean validateRequiredProperties(Map<String, String> properties) {
-        final List<String> requiredProperties = Arrays.asList(
-                TransitdataProperties.KEY_ROUTE_NAME,
-                TransitdataProperties.KEY_DIRECTION,
-                TransitdataProperties.KEY_START_TIME,
-                TransitdataProperties.KEY_OPERATING_DAY,
-                TransitdataProperties.KEY_DVJ_ID
-        );
-
-        if (properties == null) {
-            log.error("Message has no properties");
-            return false;
-        }
-        for (String p: requiredProperties) {
-            if (!properties.containsKey(p)) {
-                log.error("Message is missing required property " + p);
-                return false;
-            }
-        }
-
-        final String routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
-        if (!ProcessorUtils.validateRouteName(routeName)) {
-            log.warn("Invalid route name {}, discarding message", routeName);
-            return false;
-        }
-
-        if (ProcessorUtils.isTrainRoute(routeName)) {
-            log.info("Route {} is for trains, discarding message", routeName);
-            return false;
-        }
-
-        return true;
+        //TODO remove this requirement! Read DVJ_ID from DOITripInfo Payload!
+        return properties != null && properties.containsKey(TransitdataProperties.KEY_DVJ_ID);
     }
 
-    protected boolean validate(PubtransTableProtos.Common common) {
+    protected boolean validate(PubtransData data) {
+        PubtransTableProtos.Common common = data.common;
+        PubtransTableProtos.DOITripInfo tripInfo = data.tripInfo;
+        return validateCommon(common) && validateTripInfo(tripInfo);
+    }
+
+    protected boolean validateCommon(PubtransTableProtos.Common common) {
         if (common == null) {
-            log.error("No Common in the payload, message discarded");
+            log.error("No Common, discarding message");
             return false;
         }
         if (!common.hasIsTargetedAtJourneyPatternPointGid()) {
@@ -124,4 +99,28 @@ public abstract class BaseProcessor implements IMessageProcessor {
         return true;
     }
 
+    protected boolean validateTripInfo(PubtransTableProtos.DOITripInfo tripInfo) {
+        if (tripInfo == null) {
+            log.error("No tripInfo, discarding message");
+            return false;
+        }
+
+        if (!tripInfo.hasRouteId()) {
+            log.error("TripInfo has no RouteId, discarding message");
+            return false;
+        }
+
+        final String routeName = tripInfo.getRouteId();
+        if (!ProcessorUtils.validateRouteName(routeName)) {
+            log.warn("Invalid route name {}, discarding message", routeName);
+            return false;
+        }
+
+        if (ProcessorUtils.isTrainRoute(routeName)) {
+            log.info("Route {} is for trains, discarding message", routeName);
+            return false;
+        }
+
+        return true;
+    }
 }
