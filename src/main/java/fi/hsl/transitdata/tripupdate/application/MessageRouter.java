@@ -71,17 +71,22 @@ public class MessageRouter implements IMessageHandler {
                 IMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
-                        GtfsRealtime.TripUpdate tripUpdate = processor.processMessage(received);
+                        Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = processor.processMessage(received);
+                        if (maybeTripUpdate.isPresent()) {
+                            GtfsRealtime.TripUpdate tripUpdate = maybeTripUpdate.get();
+                            boolean tripUpdateIsValid = true;
 
-                        boolean tripUpdateIsValid = true;
+                            for (ITripUpdateValidator validator : tripUpdateValidators) {
+                                tripUpdateIsValid = tripUpdateIsValid && validator.validate(tripUpdate);
+                            }
 
-                        for (ITripUpdateValidator validator : tripUpdateValidators) {
-                            tripUpdateIsValid = tripUpdateIsValid && validator.validate(tripUpdate);
+                            if (tripUpdateIsValid) {
+                                long eventTimeMs = received.getEventTime();
+                                sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID), eventTimeMs);
+                            }
                         }
-
-                        if (tripUpdateIsValid) {
-                            long eventTimeMs = received.getEventTime();
-                            sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID), eventTimeMs);
+                        else {
+                            log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
                         }
                     }
                     else {

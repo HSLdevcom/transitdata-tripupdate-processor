@@ -47,7 +47,7 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public TripUpdate processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
+    public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
         TripUpdate tripUpdate = null;
         try {
             final StopTimeUpdate latest = updateStopTimeUpdateCache(stopEstimate);
@@ -63,12 +63,12 @@ public class TripUpdateProcessor {
             log.error("Exception while translating StopEstimate into TripUpdate", e);
         }
 
-        return tripUpdate;
+        return Optional.ofNullable(tripUpdate);
 
     }
 
 
-    public TripUpdate processTripCancellation(long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
+    public Optional<TripUpdate> processTripCancellation(long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
         TripUpdate tripUpdate = null;
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
@@ -91,7 +91,7 @@ public class TripUpdateProcessor {
             log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
         }
 
-        return tripUpdate;
+        return Optional.ofNullable(tripUpdate);
     }
 
     private String cacheKey(final InternalMessages.StopEstimate stopEstimate) {

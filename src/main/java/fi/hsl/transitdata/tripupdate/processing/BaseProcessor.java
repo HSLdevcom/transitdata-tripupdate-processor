@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class BaseProcessor implements IMessageProcessor {
     protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
@@ -34,21 +35,15 @@ public abstract class BaseProcessor implements IMessageProcessor {
     protected abstract PubtransData parseSharedData(Message msg) throws InvalidProtocolBufferException;
 
     @Override
-    public GtfsRealtime.TripUpdate processMessage(Message msg) {
-
-        GtfsRealtime.TripUpdate tripUpdate = null;
-
+    public Optional<GtfsRealtime.TripUpdate> processMessage(Message msg) {
         try {
             PubtransData data = parseSharedData(msg);
-
-            // Create TripUpdate and send it out
-            tripUpdate = tripProcessor.processStopEstimate(data.toStopEstimate());
+            return  tripProcessor.processStopEstimate(data.toStopEstimate());
         }
         catch (Exception e) {
             log.error("Failed to parse message payload", e);
+            return Optional.empty();
         }
-
-        return tripUpdate;
     }
 
     @Override
