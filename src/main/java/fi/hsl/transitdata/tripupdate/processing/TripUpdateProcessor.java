@@ -69,14 +69,13 @@ public class TripUpdateProcessor {
 
 
     public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
-        //Message key is now DVJ-ID in cancellation messages, however it's DVJ-ID + JPP-ID in Stop Events.
-        //TODO fix, make consistent.
-        Long dvjId = Long.parseLong(messageKey);
-
         TripUpdate tripUpdate = null;
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            tripUpdate = updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp, tripCancellation);
+            // Cache key is Trip-ID. With TripUpdates we read this from the payload but atm cancellation
+            // sources send it as their Pulsar message key.
+            // TODO refactor TripId to cancellation payload.
+            tripUpdate = updateTripUpdateCacheWithCancellation(messageKey, messageTimestamp, tripCancellation);
         }
         else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the
@@ -101,7 +100,7 @@ public class TripUpdateProcessor {
         // reason for duplicate role is that we're using the cached entry to create the new one.
         // TODO think if we can separate these into two methods.
 
-        final String tripKey = cacheKey(stopEstimate); //stopEvent.getDatedVehicleJourneyId();
+        final String tripKey = cacheKey(stopEstimate);
         Map<Integer, StopTimeUpdate> stopTimeUpdatesForThisTripUpdate = getStopTimeUpdatesWithStopSequences(tripKey);
 
         //StopSeq is the key since it's unique within one journey (running number).
@@ -145,10 +144,10 @@ public class TripUpdateProcessor {
         return tripUpdate;
     }
 
-    private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId,
-                                                             long messageTimestampMs,
+    private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
+                                                             final long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {
-        TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
+        TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(cacheKey);
         if (previousTripUpdate == null) {
             previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestampMs);
         }
@@ -163,8 +162,7 @@ public class TripUpdateProcessor {
                 .setTimestamp(TimeUnit.SECONDS.convert(messageTimestampMs, TimeUnit.MILLISECONDS))
                 .build();
 
-        final String key = Long.toString(dvjId); // TODO Use cacheKey()
-        tripUpdateCache.put(key, newTripUpdate);
+        tripUpdateCache.put(cacheKey, newTripUpdate);
         return newTripUpdate;
     }
 }
