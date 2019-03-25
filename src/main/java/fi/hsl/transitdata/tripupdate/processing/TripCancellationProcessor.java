@@ -51,7 +51,7 @@ public class TripCancellationProcessor implements IMessageProcessor {
 
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getEventTime(), tripCancellation);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
         }
