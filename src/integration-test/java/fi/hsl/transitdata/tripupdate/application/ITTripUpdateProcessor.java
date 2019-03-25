@@ -65,7 +65,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
             @Override
             public void testImpl(TestPipeline.TestContext context) throws Exception {
                 final long ts = System.currentTimeMillis();
-                InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(routeName, joreDir, dateTime);
+                InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(routeName, joreDir, dateTime, Long.toString(dvjId));
                 sendPubtransSourcePulsarMessage(context.source, new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, ts, dvjId));
                 logger.info("Message sent, reading it back");
 
@@ -90,7 +90,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     public void testCancellationWithGtfsRtDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
         final int invalidJoreDirection = 0;
-        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, invalidJoreDirection, dateTime);
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, invalidJoreDirection, dateTime, Long.toString(dvjId));
         PubtransPulsarMessageData data = new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, System.currentTimeMillis(), dvjId);
 
         testInvalidInput(data, "-test-gtfs-dir");
@@ -99,7 +99,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testCancellationWithInvalidDirection() throws Exception {
         //InternalMessages are in Jore format 1-2, gtfs-rt in 0-1
-        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime);
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime, Long.toString(dvjId));
         PubtransPulsarMessageData data = new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, System.currentTimeMillis(), dvjId);
         testInvalidInput(data, "-test-invalid-dir");
     }
@@ -107,7 +107,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testCancellationWithRunningStatus() throws Exception {
         final InternalMessages.TripCancellation.Status runningStatus = InternalMessages.TripCancellation.Status.RUNNING;
-        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime, runningStatus);
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, 10, dateTime, runningStatus, Long.toString(dvjId));
         PubtransPulsarMessageData data = new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, System.currentTimeMillis(), dvjId);
         testInvalidInput(data, "-test-running");
     }
@@ -115,7 +115,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     @Test
     public void testCancellationWithTrainRoute() throws Exception {
         String trainRoute = "3001";
-        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(trainRoute, joreDirection, dateTime);
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(trainRoute, joreDirection, dateTime, Long.toString(dvjId));
         PubtransPulsarMessageData data = new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, System.currentTimeMillis(), dvjId);
         testInvalidInput(data, "-test-train-route");
     }
