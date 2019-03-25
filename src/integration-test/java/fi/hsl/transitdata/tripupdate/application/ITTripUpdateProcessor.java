@@ -3,19 +3,24 @@ package fi.hsl.transitdata.tripupdate.application;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.gtfsrt.FeedMessageFactory;
 import fi.hsl.common.pulsar.*;
+import fi.hsl.common.transitdata.ITMockDataUtilsTest;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
+import fi.hsl.transitdata.tripupdate.models.PubtransData;
+import fi.hsl.transitdata.tripupdate.processing.BaseProcessor;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.junit.Test;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -274,6 +279,86 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         else {
             testValidStopEvent(msg, "-test-non-viapoint-should-pass");
         }
+    }
+
+    @Test
+    public void testCancellationAfterStopEstimate() throws Exception {
+        final String testId = "-test-cancellation-after-stop-estimate";
+        ArrayList<PulsarMessageData> input = new ArrayList<>();
+        ArrayList<PulsarMessageData> expectedOutput = new ArrayList<>();
+
+        // First a stop estimate
+        final long now = System.currentTimeMillis();
+        final long eventTime = now + 60000; //One minute from now
+        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, eventTime);
+        PubtransPulsarMessageData.ArrivalPulsarMessageData validMsg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
+        input.add(validMsg);
+        GtfsRealtime.FeedMessage asFeedMessage = toGtfsRt(validMsg);
+
+        //Expected output is GTFS-RT TripUpdate
+        final Map<String, String> outputProperties = new HashMap<>();
+        outputProperties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString());
+
+        final long expectedTimestamp = asFeedMessage.getHeader().getTimestamp();
+        final String expectedKey = validMsg.key.get();
+        PulsarMessageData validOutput = new PulsarMessageData(asFeedMessage.toByteArray(), validMsg.eventTime.get(), expectedKey, outputProperties);
+        expectedOutput.add(validOutput);
+
+        // Then add cancellation for the same trip
+        final long cancellationNow = System.currentTimeMillis();
+        final long cancellationEventTime = eventTime + 1000;
+        LocalDateTime dt = Instant.ofEpochMilli(cancellationEventTime).atZone(ZoneId.systemDefault()).toLocalDateTime();
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(route, joreDirection, dt);
+        PulsarMessageData validCancellation = new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, cancellationNow, dvjId);
+        input.add(validCancellation);
+
+        //Expected output is GTFS-RT TripUpdate
+        final String cancellationKey = Long.toString(dvjId);
+        GtfsRealtime.TripUpdate cancellationTu = GtfsRtFactory.newTripUpdate(cancellation, cancellationEventTime);
+        GtfsRealtime.FeedMessage cancellationFeedMessage = FeedMessageFactory.createDifferentialFeedMessage(cancellationKey, cancellationTu, cancellationEventTime / 1000);
+        PulsarMessageData cancellationOutput = new PulsarMessageData(cancellationFeedMessage.toByteArray(),
+                cancellationNow,
+                cancellationKey,
+                outputProperties); // Same properties
+        expectedOutput.add(cancellationOutput);
+
+        TestPipeline.MultiMessageTestLogic logic = new TestPipeline.MultiMessageTestLogic(input, expectedOutput) {
+            @Override
+            public void validateMessage(PulsarMessageData expected, PulsarMessageData received) {
+                try {
+                    assertNotNull(expected);
+                    assertNotNull(received);
+                    assertEquals(TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString(), received.properties.get(TransitdataProperties.KEY_PROTOBUF_SCHEMA));
+                    assertEquals(expected.key.get(), received.key.get());
+
+                    long expectedPulsarTimestampInMs = expected.eventTime.get();
+                    assertEquals(expectedPulsarTimestampInMs, (long)received.eventTime.get()); // This should be in ms
+
+                    GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received.payload);
+                    assertNotNull(feedMessage);
+                    assertEquals(expectedPulsarTimestampInMs / 1000, feedMessage.getHeader().getTimestamp());
+
+                    GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
+                    assertTrue(entity.hasTripUpdate());
+                    assertFalse(entity.hasAlert());
+                    assertFalse(entity.hasVehicle());
+                    assertEquals(expected.key.get(), entity.getId());
+
+                    // TODO check cancelled status
+                    // Cancelled should not have stopTimeUpdates either
+                    // TODO add cancellation of cancellation, should contain original StopTimeUpdates
+                    // entity.getTripUpdate().getTrip().getScheduleRelationship()
+                }
+                catch (Exception e) {
+                    logger.error("Failed to validate message", e);
+                    assert(false);
+                }
+            }
+        };
+
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
     @Test
