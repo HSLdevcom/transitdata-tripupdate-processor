@@ -68,7 +68,7 @@ public class MessageRouter implements IMessageHandler {
             maybeSchema.ifPresent(schema -> {
                 AbstractMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
-                    if (processor.validateMessage(received)) {
+                    if (processor.validateMessage(received.getData())) {
 
                         Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
                         if (maybeTripUpdate.isPresent()) {

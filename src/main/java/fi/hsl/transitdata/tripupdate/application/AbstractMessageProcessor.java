@@ -29,10 +29,10 @@ public abstract class AbstractMessageProcessor {
     /**
      * Check the data within the payload
      *
-     * @param msg
+     * @param payload
      * @return true if we can proceed, false if we want to ignore this message
      */
-    public abstract boolean validateMessage(Message msg);
+    public abstract boolean validateMessage(byte[] payload);
 
     /**
      * Invoked if message goes through the validation

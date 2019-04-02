@@ -21,10 +21,10 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
     }
 
     @Override
-    public boolean validateMessage(Message msg) {
+    public boolean validateMessage(byte[] payload) {
 
         try {
-            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
+            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(payload);
 
             if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() &&
                 tripCancellation.hasStartDate() && tripCancellation.hasStartTime()) {

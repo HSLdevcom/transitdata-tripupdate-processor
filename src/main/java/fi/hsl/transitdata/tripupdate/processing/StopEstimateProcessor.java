@@ -37,9 +37,9 @@ public class StopEstimateProcessor extends AbstractMessageProcessor {
     }
 
     @Override
-    public boolean validateMessage(Message msg) {
+    public boolean validateMessage(byte[] payload) {
         try {
-            InternalMessages.StopEstimate data = InternalMessages.StopEstimate.parseFrom(msg.getData());
+            InternalMessages.StopEstimate data = InternalMessages.StopEstimate.parseFrom(payload);
             String route = data.getTripInfo().getRouteId();
             int direction = data.getTripInfo().getDirectionId();
 
