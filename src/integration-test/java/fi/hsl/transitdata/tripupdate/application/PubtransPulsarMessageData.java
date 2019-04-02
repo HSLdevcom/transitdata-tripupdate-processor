@@ -18,18 +18,11 @@ public class PubtransPulsarMessageData<T extends com.google.protobuf.GeneratedMe
         this.actualPayload = actualPayload;
         this.schema = schema;
         this.properties.put(TransitdataProperties.KEY_PROTOBUF_SCHEMA, schema.toString());
-        this.properties.put(TransitdataProperties.KEY_DVJ_ID, Long.toString(dvjId));
     }
 
-    public static class ArrivalPulsarMessageData extends PubtransPulsarMessageData<PubtransTableProtos.ROIArrival> {
-        public ArrivalPulsarMessageData(PubtransTableProtos.ROIArrival actualPayload, Long eventTime, long dvjId) {
-            super(actualPayload, TransitdataProperties.ProtobufSchema.PubtransRoiArrival, eventTime, dvjId);
-        }
-    }
-
-    public static class DeparturePulsarMessageData extends PubtransPulsarMessageData<PubtransTableProtos.ROIDeparture> {
-        public DeparturePulsarMessageData(PubtransTableProtos.ROIDeparture actualPayload, Long eventTime, long dvjId) {
-            super(actualPayload, TransitdataProperties.ProtobufSchema.PubtransRoiDeparture, eventTime, dvjId);
+    public static class StopEstimateMessageData extends PubtransPulsarMessageData<InternalMessages.StopEstimate> {
+        public StopEstimateMessageData(InternalMessages.StopEstimate actualPayload, Long eventTime, long dvjId) {
+            super(actualPayload, TransitdataProperties.ProtobufSchema.InternalMessagesStopEstimate, eventTime, dvjId);
         }
     }
 
