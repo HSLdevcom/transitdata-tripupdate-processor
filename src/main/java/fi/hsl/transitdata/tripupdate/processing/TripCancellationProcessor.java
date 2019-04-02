@@ -8,6 +8,8 @@ import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
 public class TripCancellationProcessor implements IMessageProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(TripCancellationProcessor.class);
@@ -45,19 +47,14 @@ public class TripCancellationProcessor implements IMessageProcessor {
     }
 
     @Override
-    public GtfsRealtime.TripUpdate processMessage(Message msg) {
-
-        GtfsRealtime.TripUpdate tripUpdate = null;
-
+    public Optional<GtfsRealtime.TripUpdate> processMessage(Message msg) {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            return tripUpdateProcessor.processTripCancellation(msg.getEventTime(), tripCancellation);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
+            return Optional.empty();
         }
-
-        return tripUpdate;
-
     }
 
 }

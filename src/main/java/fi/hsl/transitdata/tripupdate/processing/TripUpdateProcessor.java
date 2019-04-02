@@ -47,7 +47,7 @@ public class TripUpdateProcessor {
                 });
     }
 
-    public TripUpdate processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
+    public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
         TripUpdate tripUpdate = null;
         try {
             final StopTimeUpdate latest = updateStopTimeUpdateCache(stopEstimate);
@@ -63,19 +63,22 @@ public class TripUpdateProcessor {
             log.error("Exception while translating StopEstimate into TripUpdate", e);
         }
 
-        return tripUpdate;
+        return Optional.ofNullable(tripUpdate);
 
     }
 
 
-    public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
+    public Optional<TripUpdate> processTripCancellation(long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
         TripUpdate tripUpdate = null;
 
         if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            // Cache key is Trip-ID. With TripUpdates we read this from the payload but atm cancellation
-            // sources send it as their Pulsar message key.
-            // TODO refactor TripId to cancellation payload.
-            tripUpdate = updateTripUpdateCacheWithCancellation(messageKey, messageTimestamp, tripCancellation);
+            if (tripCancellation.hasTripId()) {
+                final String cacheKey = tripCancellation.getTripId();
+                tripUpdate = updateTripUpdateCacheWithCancellation(cacheKey, messageTimestamp, tripCancellation);
+            }
+            else {
+                log.error("Failed to find trip-Id from cancellation message payload.");
+            }
         }
         else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
             //Current hypothesis is that this never occurs. For now simply log this event and then implement the
@@ -88,7 +91,7 @@ public class TripUpdateProcessor {
             log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
         }
 
-        return tripUpdate;
+        return Optional.ofNullable(tripUpdate);
     }
 
     private String cacheKey(final InternalMessages.StopEstimate stopEstimate) {
