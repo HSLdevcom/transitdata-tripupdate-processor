@@ -1,0 +1,61 @@
+package fi.hsl.transitdata.tripupdate.application;
+
+import com.google.transit.realtime.GtfsRealtime;
+import fi.hsl.common.transitdata.PubtransFactory;
+import fi.hsl.common.transitdata.proto.PubtransTableProtos;
+import fi.hsl.transitdata.tripupdate.processing.ProcessorUtils;
+import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
+import org.apache.pulsar.client.api.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
+
+public abstract class AbstractMessageProcessor {
+    private static final Logger logger = LoggerFactory.getLogger(AbstractMessageProcessor.class);
+
+    public static class TripUpdateWithId {
+        String tripId;
+        GtfsRealtime.TripUpdate tripUpdate;
+
+        public static Optional<TripUpdateWithId> newInstance(String id, GtfsRealtime.TripUpdate tu) {
+            TripUpdateWithId pair = new TripUpdateWithId();
+            pair.tripId = id;
+            pair.tripUpdate = tu;
+            return Optional.of(pair);
+        }
+    }
+
+    /**
+     * Check the data within the payload
+     *
+     * @param msg
+     * @return true if we can proceed, false if we want to ignore this message
+     */
+    public abstract boolean validateMessage(Message msg);
+
+    /**
+     * Invoked if message goes through the validation
+     * @param msg
+     */
+    public abstract Optional<TripUpdateWithId> processMessage(Message msg);
+
+
+    protected boolean validateTripData(String routeName, int direction) {
+        if (!ProcessorUtils.validateRouteName(routeName)) {
+            logger.warn("Invalid route name {}, discarding message", routeName);
+            return false;
+        }
+
+        if (ProcessorUtils.isTrainRoute(routeName)) {
+            logger.info("Route {} is for trains, discarding message", routeName);
+            return false;
+        }
+
+        if (direction != PubtransFactory.JORE_DIRECTION_ID_INBOUND && direction != PubtransFactory.JORE_DIRECTION_ID_OUTBOUND) {
+            logger.info("Direction {} is not a valid JORE-direction, discarding message", direction);
+            return false;
+        }
+        return true;
+    }
+}

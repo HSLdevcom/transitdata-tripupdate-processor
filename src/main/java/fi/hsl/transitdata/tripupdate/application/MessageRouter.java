@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class MessageRouter implements IMessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
 
-    private Map<ProtobufSchema, IMessageProcessor> processors = new HashMap<>();
+    private Map<ProtobufSchema, AbstractMessageProcessor> processors = new HashMap<>();
     private List<ITripUpdateValidator> tripUpdateValidators;
 
     private Consumer<byte[]> consumer;
@@ -66,13 +66,13 @@ public class MessageRouter implements IMessageHandler {
         try {
             Optional<TransitdataSchema> maybeSchema = TransitdataSchema.parseFromPulsarMessage(received);
             maybeSchema.ifPresent(schema -> {
-                IMessageProcessor processor = processors.get(schema.schema);
+                AbstractMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
 
-                        Optional<IMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
+                        Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
                         if (maybeTripUpdate.isPresent()) {
-                            final IMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
+                            final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
                             final GtfsRealtime.TripUpdate tripUpdate = pair.tripUpdate;
                             boolean tripUpdateIsValid = true;
 
@@ -110,7 +110,7 @@ public class MessageRouter implements IMessageHandler {
         }
     }
 
-    private void sendTripUpdate(final IMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+    private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
         final String tripId = tuIdPair.tripId;
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.tripUpdate;
 
