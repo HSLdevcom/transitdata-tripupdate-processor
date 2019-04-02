@@ -263,7 +263,6 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         //Then a real message
         final long now = System.currentTimeMillis();
         final long eventTime = now + 60000; //One minute from now
-        //PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, eventTime);
         InternalMessages.StopEstimate arrival = MockDataUtils.mockStopEstimate(dvjId,
                 InternalMessages.StopEstimate.Type.ARRIVAL,
                 stopId, stopSequence, eventTime);
