@@ -3,9 +3,9 @@ package fi.hsl.transitdata.tripupdate.processing;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.TransitdataProperties;
+import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
-import fi.hsl.transitdata.tripupdate.models.PubtransData;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,32 +13,20 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Optional;
 
-public abstract class BaseProcessor implements IMessageProcessor {
-    protected static final Logger log = LoggerFactory.getLogger(BaseProcessor.class);
-
-    final EventType eventType;
+public class StopEstimateProcessor implements IMessageProcessor {
+    protected static final Logger log = LoggerFactory.getLogger(StopEstimateProcessor.class);
 
     final TripUpdateProcessor tripProcessor;
 
-    public enum EventType {
-        Arrival, Departure
-    }
-
-    public BaseProcessor(EventType eventType, TripUpdateProcessor tripProcessor) {
-        this.eventType = eventType;
+    public StopEstimateProcessor(TripUpdateProcessor tripProcessor) {
         this.tripProcessor = tripProcessor;
     }
-
-    /**
-     * Because the proto-classes don't have a common base class we need to extract the 'shared'-data with concrete implementations
-     */
-    protected abstract PubtransData parseSharedData(Message msg) throws InvalidProtocolBufferException;
 
     @Override
     public Optional<GtfsRealtime.TripUpdate> processMessage(Message msg) {
         try {
-            PubtransData data = parseSharedData(msg);
-            return  tripProcessor.processStopEstimate(data.toStopEstimate());
+            InternalMessages.StopEstimate data = InternalMessages.StopEstimate.parseFrom(msg.getData());
+            return  tripProcessor.processStopEstimate(data);
         }
         catch (Exception e) {
             log.error("Failed to parse message payload", e);
@@ -50,7 +38,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
     public boolean validateMessage(Message msg) {
         try {
             if (validateRequiredProperties(msg.getProperties())) {
-                PubtransData data = parseSharedData(msg);
+                InternalMessages.StopEstimate data = InternalMessages.StopEstimate.parseFrom(msg.getData());
                 return validate(data);
             }
             else {
@@ -58,7 +46,7 @@ public abstract class BaseProcessor implements IMessageProcessor {
             }
         }
         catch (InvalidProtocolBufferException e) {
-            log.error("Failed to parse ROIArrival from message payload", e);
+            log.error("Failed to parse StopEstimate from message payload", e);
             return false;
         }
     }
@@ -68,10 +56,11 @@ public abstract class BaseProcessor implements IMessageProcessor {
         return properties != null && properties.containsKey(TransitdataProperties.KEY_DVJ_ID);
     }
 
-    protected boolean validate(PubtransData data) {
-        PubtransTableProtos.Common common = data.common;
+    protected boolean validate(InternalMessages.StopEstimate data) {
+        /*PubtransTableProtos.Common common = data.common;
         PubtransTableProtos.DOITripInfo tripInfo = data.tripInfo;
-        return validateCommon(common) && validateTripInfo(tripInfo);
+        return validateCommon(common) && validateTripInfo(tripInfo);*/
+        return true;
     }
 
     protected boolean validateCommon(PubtransTableProtos.Common common) {

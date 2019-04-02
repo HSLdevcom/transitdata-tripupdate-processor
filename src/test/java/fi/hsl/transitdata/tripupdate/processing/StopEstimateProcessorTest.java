@@ -1,7 +1,6 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import fi.hsl.common.transitdata.TransitdataProperties;
-import fi.hsl.transitdata.tripupdate.MockDataFactory;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -9,14 +8,14 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class BaseProcessorTest {
+public class StopEstimateProcessorTest {
 
     @Test
     public void messageWithEmptyPropertiesIsDiscarded() {
 
         Map<String, String> properties = new HashMap<>();
 
-        assertEquals(false, BaseProcessor.validateRequiredProperties(properties));
+        assertEquals(false, StopEstimateProcessor.validateRequiredProperties(properties));
     }
 
     @Test
@@ -28,7 +27,7 @@ public class BaseProcessorTest {
         properties.put(TransitdataProperties.KEY_OPERATING_DAY, "20181109");
         //No start time
 
-        assertEquals(false, BaseProcessor.validateRequiredProperties(properties));
+        assertEquals(false, StopEstimateProcessor.validateRequiredProperties(properties));
     }
 
     @Test
@@ -41,7 +40,7 @@ public class BaseProcessorTest {
         properties.put(TransitdataProperties.KEY_START_TIME, "11:22:00");
         properties.put(TransitdataProperties.KEY_DVJ_ID, "1234567890");
 
-        assertEquals(true, BaseProcessor.validateRequiredProperties(properties));
+        assertEquals(true, StopEstimateProcessor.validateRequiredProperties(properties));
 
     }
 
@@ -54,7 +53,7 @@ public class BaseProcessorTest {
         properties.put(TransitdataProperties.KEY_OPERATING_DAY, "20181109");
         properties.put(TransitdataProperties.KEY_START_TIME, "11:22:00");
 
-        assertEquals(false, BaseProcessor.validateRequiredProperties(properties));
+        assertEquals(false, StopEstimateProcessor.validateRequiredProperties(properties));
     }
 
     @Test
@@ -66,6 +65,6 @@ public class BaseProcessorTest {
         properties.put(TransitdataProperties.KEY_OPERATING_DAY, "20181109");
         properties.put(TransitdataProperties.KEY_START_TIME, "11:22:00");
 
-        assertEquals(false, BaseProcessor.validateRequiredProperties(properties));
+        assertEquals(false, StopEstimateProcessor.validateRequiredProperties(properties));
     }
 }

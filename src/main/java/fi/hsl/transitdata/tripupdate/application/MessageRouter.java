@@ -8,11 +8,10 @@ import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.common.transitdata.TransitdataSchema;
+import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
-import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
-import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
@@ -47,8 +46,7 @@ public class MessageRouter implements IMessageHandler {
         //Let's use the same instance of TripUpdateProcessor.
         TripUpdateProcessor tripUpdateProcessor = new TripUpdateProcessor(context.getProducer());
 
-        processors.put(ProtobufSchema.PubtransRoiArrival, new ArrivalProcessor(tripUpdateProcessor));
-        processors.put(ProtobufSchema.PubtransRoiDeparture, new DepartureProcessor(tripUpdateProcessor));
+        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor));
         processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
     }
 
