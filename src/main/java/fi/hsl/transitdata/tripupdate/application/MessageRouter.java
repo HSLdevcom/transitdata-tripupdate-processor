@@ -69,9 +69,11 @@ public class MessageRouter implements IMessageHandler {
                 IMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
                     if (processor.validateMessage(received)) {
-                        Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = processor.processMessage(received);
+
+                        Optional<IMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
                         if (maybeTripUpdate.isPresent()) {
-                            GtfsRealtime.TripUpdate tripUpdate = maybeTripUpdate.get();
+                            final IMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
+                            final GtfsRealtime.TripUpdate tripUpdate = pair.tripUpdate;
                             boolean tripUpdateIsValid = true;
 
                             for (ITripUpdateValidator validator : tripUpdateValidators) {
@@ -80,7 +82,7 @@ public class MessageRouter implements IMessageHandler {
 
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
-                                sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID), eventTimeMs);
+                                sendTripUpdate(pair, eventTimeMs);
                             }
                         }
                         else {
@@ -108,16 +110,19 @@ public class MessageRouter implements IMessageHandler {
         }
     }
 
-    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId, final long pulsarEventTimestamp) {
-        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
+    private void sendTripUpdate(final IMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+        final String tripId = tuIdPair.tripId;
+        final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.tripUpdate;
+
+        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
         producer.newMessage()
-                .key(dvjId)
+                .key(tripId)
                 .eventTime(pulsarEventTimestamp)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
                 .value(feedMessage.toByteArray())
                 .sendAsync()
-                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
-                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+                .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
+                        tripId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
 
     }
 }

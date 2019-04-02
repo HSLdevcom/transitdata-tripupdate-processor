@@ -47,10 +47,15 @@ public class TripCancellationProcessor implements IMessageProcessor {
     }
 
     @Override
-    public Optional<GtfsRealtime.TripUpdate> processMessage(Message msg) {
+    public Optional<TripUpdateWithId> processMessage(Message msg) {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            return tripUpdateProcessor.processTripCancellation(msg.getEventTime(), tripCancellation);
+            final String tripId = tripCancellation.getTripId();
+
+            Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = tripUpdateProcessor.processTripCancellation(msg.getEventTime(), tripCancellation);
+            return maybeTripUpdate.flatMap(tripUpdate ->
+                    TripUpdateWithId.newInstance(tripId, tripUpdate)
+            );
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
             return Optional.empty();

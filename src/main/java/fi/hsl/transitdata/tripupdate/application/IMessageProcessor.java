@@ -6,6 +6,19 @@ import org.apache.pulsar.client.api.Message;
 import java.util.Optional;
 
 public interface IMessageProcessor {
+
+    class TripUpdateWithId {
+        String tripId;
+        GtfsRealtime.TripUpdate tripUpdate;
+
+        public static Optional<TripUpdateWithId> newInstance(String id, GtfsRealtime.TripUpdate tu) {
+            TripUpdateWithId pair = new TripUpdateWithId();
+            pair.tripId = id;
+            pair.tripUpdate = tu;
+            return Optional.of(pair);
+        }
+    }
+
     /**
      * Check the data within the payload
      *
@@ -18,5 +31,5 @@ public interface IMessageProcessor {
      * Invoked if message goes through the validation
      * @param msg
      */
-    Optional<GtfsRealtime.TripUpdate> processMessage(Message msg);
+    Optional<TripUpdateWithId> processMessage(Message msg);
 }
