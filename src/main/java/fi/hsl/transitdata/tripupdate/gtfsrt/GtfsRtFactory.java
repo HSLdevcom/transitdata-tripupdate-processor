@@ -18,23 +18,6 @@ public class GtfsRtFactory {
     private GtfsRtFactory() {
     }
 
-
-    public static GtfsRealtime.FeedMessage newFeedMessage(String id, GtfsRealtime.TripUpdate tripUpdate, long timestamp) {
-
-        GtfsRealtime.FeedHeader header = GtfsRealtime.FeedHeader.newBuilder()
-                .setGtfsRealtimeVersion("2.0")
-                .setIncrementality(GtfsRealtime.FeedHeader.Incrementality.DIFFERENTIAL)
-                .setTimestamp(timestamp)
-                .build();
-
-        GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.newBuilder()
-                .setTripUpdate(tripUpdate)
-                .setId(id)
-                .build();
-
-        return GtfsRealtime.FeedMessage.newBuilder().addEntity(entity).setHeader(header).build();
-    }
-
     public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdate(StopEvent stopEvent) {
         return newStopTimeUpdateFromPrevious(stopEvent, null);
     }
@@ -91,10 +74,10 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
-
+        final int gtfsRtDirection = StopEvent.joreDirectionToGtfsDirection(cancellation.getDirectionId());
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(reformatRouteName(cancellation.getRouteId()))
-                .setDirectionId(cancellation.getDirectionId())
+                .setDirectionId(gtfsRtDirection)
                 .setStartDate(cancellation.getStartDate())
                 .setStartTime(cancellation.getStartTime())
                 .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)

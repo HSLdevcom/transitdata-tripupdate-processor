@@ -71,8 +71,8 @@ public class StopEvent {
 
         if (properties != null) {
             event.getRouteData().stopId = Long.parseLong(properties.get(TransitdataProperties.KEY_STOP_ID));
-            int pubtransDirection = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
-            event.getRouteData().direction = pubtransDirectionToGtfsDirection(pubtransDirection);
+            int joreDirection = Integer.parseInt(properties.get(TransitdataProperties.KEY_DIRECTION));
+            event.getRouteData().direction = joreDirectionToGtfsDirection(joreDirection);
             event.getRouteData().routeName = properties.get(TransitdataProperties.KEY_ROUTE_NAME);
             event.getRouteData().operatingDay = properties.get(TransitdataProperties.KEY_OPERATING_DAY);
             event.getRouteData().startTime = properties.get(TransitdataProperties.KEY_START_TIME);
@@ -81,8 +81,8 @@ public class StopEvent {
         return event;
     }
 
-    public static int pubtransDirectionToGtfsDirection(int pubtransDirection) {
-        int gtfsDirection = pubtransDirection == 1 ? GtfsRtFactory.DIRECTION_ID_OUTBOUND : GtfsRtFactory.DIRECTION_ID_INBOUND;
+    public static int joreDirectionToGtfsDirection(int joreDirection) {
+        int gtfsDirection = joreDirection == 1 ? GtfsRtFactory.DIRECTION_ID_OUTBOUND : GtfsRtFactory.DIRECTION_ID_INBOUND;
         return gtfsDirection;
     }
 

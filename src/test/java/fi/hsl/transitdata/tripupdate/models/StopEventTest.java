@@ -3,8 +3,6 @@ package fi.hsl.transitdata.tripupdate.models;
 import fi.hsl.common.transitdata.MockDataUtils;
 import fi.hsl.common.transitdata.RouteData;
 import fi.hsl.common.transitdata.proto.PubtransTableProtos;
-import fi.hsl.transitdata.tripupdate.MockDataFactory;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
 import org.junit.Test;
 
 import java.util.Map;
@@ -50,7 +48,7 @@ public class StopEventTest {
         assertEquals(stop.getRouteData().getOperatingDay(), OPERATING_DAY);
         assertEquals(stop.getRouteData().getRouteName(), ROUTE_NAME);
         assertEquals(stop.getRouteData().getStartTime(), START_TIME);
-        assertEquals(stop.getRouteData().getDirection(), StopEvent.pubtransDirectionToGtfsDirection(DIRECTION));
+        assertEquals(stop.getRouteData().getDirection(), StopEvent.joreDirectionToGtfsDirection(DIRECTION));
         assertEquals(stop.getRouteData().getStopId(), STOP_ID);
     }
 
