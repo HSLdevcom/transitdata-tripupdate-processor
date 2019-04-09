@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 import static com.google.transit.realtime.GtfsRealtime.*;
@@ -72,23 +73,7 @@ public class TripUpdateProcessor {
         //TODO fix, make consistent.
         Long dvjId = Long.parseLong(messageKey);
 
-        TripUpdate tripUpdate = null;
-
-        if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED) {
-            tripUpdate = updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp, tripCancellation);
-        }
-        else if (tripCancellation.getStatus() == InternalMessages.TripCancellation.Status.RUNNING) {
-            //Current hypothesis is that this never occurs. For now simply log this event and then implement the
-            //functionality when necessary.
-            //The correct functionality is to mark the ScheduleRelationship for the TripUpdate as SCHEDULED
-            //and fetch the possible previous StopTimeUpdates from the cache and insert them to the TripUpdate.
-            log.error("Received a TripCancellation event with status of RUNNING. This status is currently unsupported");
-        }
-        else {
-            log.error("Unknown Trip Cancellation Status: " + tripCancellation.getStatus());
-        }
-
-        return tripUpdate;
+        return updateTripUpdateCacheWithCancellation(dvjId, messageTimestamp, tripCancellation);
     }
 
     StopTimeUpdate updateStopTimeUpdateCache(final StopEvent stopEvent) throws Exception {
@@ -106,11 +91,17 @@ public class TripUpdateProcessor {
         return latest;
     }
 
-    Map<Integer, StopTimeUpdate> getStopTimeUpdatesWithStopSequences(long dvjId) throws Exception {
-        return stopTimeUpdateCache.get(dvjId);
+    Map<Integer, StopTimeUpdate> getStopTimeUpdatesWithStopSequences(long dvjId) {
+        try {
+            return stopTimeUpdateCache.get(dvjId);
+        }
+        catch (ExecutionException e) {
+            log.error("Unexpected Error with StopTimeUpdate (Guava) Cache! ", e);
+        }
+        return new HashMap<>();
     }
 
-    LinkedList<StopTimeUpdate> getStopTimeUpdates(long dvjId) throws Exception {
+    LinkedList<StopTimeUpdate> getStopTimeUpdates(long dvjId) {
         // Gtfs-rt standard requires the updates be sorted by stop seq but we already have this because we use TreeMap.
         Collection<StopTimeUpdate> updates = getStopTimeUpdatesWithStopSequences(dvjId).values();
         return new LinkedList<>(updates);
@@ -137,24 +128,39 @@ public class TripUpdateProcessor {
         return tripUpdate;
     }
 
-    private TripUpdate updateTripUpdateCacheWithCancellation(long dvjId,
-                                                             long messageTimestampMs,
-                                                             InternalMessages.TripCancellation cancellation) {
+    private TripUpdate updateTripUpdateCacheWithCancellation(final long dvjId,
+                                                             final long messageTimestampMs,
+                                                             final InternalMessages.TripCancellation cancellation) {
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(dvjId);
         if (previousTripUpdate == null) {
             previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestampMs);
         }
 
+        final GtfsRealtime.TripDescriptor.ScheduleRelationship status =
+                cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ?
+                    GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED :
+                    GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
+
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
-                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+                .setScheduleRelationship(status)
                 .build();
 
-        TripUpdate newTripUpdate = previousTripUpdate.toBuilder()
+        TripUpdate.Builder builder = previousTripUpdate.toBuilder()
                 .setTrip(tripDescriptor)
-                .clearStopTimeUpdate()
                 .setTimestamp(TimeUnit.SECONDS.convert(messageTimestampMs, TimeUnit.MILLISECONDS))
-                .build();
+                .clearStopTimeUpdate();
 
+
+        if (status == TripDescriptor.ScheduleRelationship.SCHEDULED) {
+            // We need to re-attach all the StopTimeUpdates to the payload
+
+            List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(dvjId);
+            // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
+            List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, null);
+            builder.addAllStopTimeUpdate(validated);
+        }
+
+        TripUpdate newTripUpdate = builder.build();
         tripUpdateCache.put(dvjId, newTripUpdate);
         return newTripUpdate;
     }
