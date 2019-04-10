@@ -3,12 +3,13 @@ package fi.hsl.transitdata.tripupdate.processing;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.transitdata.tripupdate.application.IMessageProcessor;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TripCancellationProcessor implements IMessageProcessor {
+import java.util.Optional;
+
+public class TripCancellationProcessor extends AbstractMessageProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(TripCancellationProcessor.class);
 
@@ -19,21 +20,18 @@ public class TripCancellationProcessor implements IMessageProcessor {
     }
 
     @Override
-    public boolean validateMessage(Message msg) {
+    public boolean validateMessage(byte[] payload) {
 
         try {
-            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
+            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(payload);
 
             if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() &&
                 tripCancellation.hasStartDate() && tripCancellation.hasStartTime()) {
 
-                boolean valid = true;
-
+                String route = tripCancellation.getRouteId();
                 int directionId = tripCancellation.getDirectionId();
-                valid &= (directionId == 1 || directionId == 2);
-                valid &= ProcessorUtils.validateRouteName(tripCancellation.getRouteId());
 
-                return valid;
+                return validateTripData(route, directionId);
             }
         } catch (InvalidProtocolBufferException e) {
             log.error("TripCancellation message could not be parsed: " + e.getMessage());
@@ -42,19 +40,17 @@ public class TripCancellationProcessor implements IMessageProcessor {
     }
 
     @Override
-    public GtfsRealtime.TripUpdate processMessage(Message msg) {
-
-        GtfsRealtime.TripUpdate tripUpdate = null;
-
+    public Optional<TripUpdateWithId> processMessage(Message msg) {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
-            tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            final String tripId = tripCancellation.getTripId();
+
+            GtfsRealtime.TripUpdate tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            return TripUpdateWithId.newInstance(tripId, tripUpdate);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
+            return Optional.empty();
         }
-
-        return tripUpdate;
-
     }
 
 }

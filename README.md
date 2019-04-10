@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor)
+[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor) branch: master
+[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor.svg?branch=develop)](https://travis-ci.org/HSLdevcom/transitdata-tripupdate-processor) branch: develop
 
 # Transitdata-tripupdate-processor
 

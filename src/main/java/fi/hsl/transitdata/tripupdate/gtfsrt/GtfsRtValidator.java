@@ -69,7 +69,7 @@ public class GtfsRtValidator {
             // If this is the latest message and it happens to be arrival, we want to use that timestamp.
             // otherwise always use departure.
             OnConflict conflictBehavior = OnConflict.DepartureWins;
-            if (unvalidated == latest && latest.hasArrival()) {
+            if (latest != null && unvalidated == latest && latest.hasArrival()) {
                 conflictBehavior = OnConflict.ArrivalWins;
             }
 
