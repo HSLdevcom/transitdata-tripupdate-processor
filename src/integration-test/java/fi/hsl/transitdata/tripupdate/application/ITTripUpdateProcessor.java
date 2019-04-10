@@ -31,8 +31,8 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
 
     final long dvjId = 1234567890L;
     final String route = "7575";
-    final int joreDirection = 2;
-    final int gtfsRtDirection = 1;
+    final int joreDirection = PubtransFactory.JORE_DIRECTION_ID_INBOUND;
+    final int gtfsRtDirection = PubtransFactory.joreDirectionToGtfsDirection(joreDirection);
     final String date = "2020-12-24";
     final String time = "18:00:00";
     final LocalDateTime dateTime = LocalDateTime.parse(date + "T" + time);
@@ -190,9 +190,10 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     public void testValidArrivalStopEvent() throws Exception {
         long now = System.currentTimeMillis();
         long eventTime = now + 5 * 60000; // event to happen five minutes from now
-        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, joreDirection, stopId, eventTime);
-
-        PubtransPulsarMessageData.ArrivalPulsarMessageData msg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
+        InternalMessages.StopEstimate arrival = MockDataUtils.mockStopEstimate(dvjId,
+                InternalMessages.StopEstimate.Type.ARRIVAL,
+               stopId, stopSequence, eventTime);
+        PubtransPulsarMessageData.StopEstimateMessageData msg = new PubtransPulsarMessageData.StopEstimateMessageData(arrival, now, dvjId);
         testValidStopEvent(msg, "-test-valid-arrival");
     }
 
@@ -200,9 +201,11 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     public void testValidDepartureStopEvent() throws Exception {
         long now = System.currentTimeMillis();
         long eventTime = now + 3 * 60000; // event to happen three minutes from now
-        PubtransTableProtos.ROIDeparture departure = MockDataUtils.mockROIDeparture(dvjId, route, joreDirection, stopId, eventTime);
+        InternalMessages.StopEstimate departure = MockDataUtils.mockStopEstimate(dvjId,
+                InternalMessages.StopEstimate.Type.DEPARTURE,
+                stopId, stopSequence, eventTime);
 
-        PubtransPulsarMessageData.DeparturePulsarMessageData msg = new PubtransPulsarMessageData.DeparturePulsarMessageData(departure, now, dvjId);
+        PubtransPulsarMessageData.StopEstimateMessageData msg = new PubtransPulsarMessageData.StopEstimateMessageData(departure, now, dvjId);
         testValidStopEvent(msg, "-test-valid-departure");
     }
 
@@ -236,9 +239,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                 assertTrue(update.hasStopId()); // TODO add check for StopId
 
                 assertTrue(tu.hasTrip());
-                GtfsRealtime.TripDescriptor tripDescriptor = tu.getTrip();
-                assertEquals(gtfsRtDirection, tripDescriptor.getDirectionId());
-                assertEquals(route, tripDescriptor.getRouteId());
+                //TODO add more checks for the payload
 
                 logger.info("Message read back, all good");
                 TestPipeline.validateAcks(1, context);
@@ -260,36 +261,6 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
 
 
     @Test
-    public void testViaPointStopEvent() throws Exception {
-        testViaPointFiltering(true);
-    }
-
-    @Test
-    public void testNonViaPointStopEvent() throws Exception {
-        testViaPointFiltering(false);
-    }
-
-    private void testViaPointFiltering(boolean filter) throws Exception {
-        long now = System.currentTimeMillis();
-        long targetTime = now + 3 * 60000; // event to happen three minutes from now
-
-        PubtransTableProtos.Common.Builder builder = MockDataUtils.generateValidCommon(dvjId, stopSequence, targetTime);
-        MockDataUtils.setIsViaPoint(builder, filter);
-        PubtransTableProtos.Common common = builder.build();
-        PubtransTableProtos.DOITripInfo tripInfo = MockDataUtils.mockDOITripInfo(common.getIsOnDatedVehicleJourneyId(), route, stopId, targetTime);
-        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(common, tripInfo);
-
-        PubtransPulsarMessageData.ArrivalPulsarMessageData msg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(
-                arrival, now, common.getIsOnDatedVehicleJourneyId());
-        if (filter) {
-            testInvalidInput(msg, "-test-viapoint-filtered");
-        }
-        else {
-            testValidStopEvent(msg, "-test-non-viapoint-should-pass");
-        }
-    }
-
-    @Test
     public void testGarbageInput() throws Exception {
         final String testId = "-test-garbage-input";
         //TripUpdateProcessor should handle garbage data and process only the relevant messages
@@ -305,9 +276,11 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         //Then a real message
         final long now = System.currentTimeMillis();
         final long eventTime = now + 60000; //One minute from now
-        PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(dvjId, route, eventTime);
+        InternalMessages.StopEstimate arrival = MockDataUtils.mockStopEstimate(dvjId,
+                InternalMessages.StopEstimate.Type.ARRIVAL,
+                stopId, stopSequence, eventTime);
 
-        PubtransPulsarMessageData.ArrivalPulsarMessageData validMsg = new PubtransPulsarMessageData.ArrivalPulsarMessageData(arrival, now, dvjId);
+        PubtransPulsarMessageData.StopEstimateMessageData validMsg = new PubtransPulsarMessageData.StopEstimateMessageData(arrival, now, dvjId);
         input.add(validMsg);
         GtfsRealtime.FeedMessage asFeedMessage = toGtfsRt(validMsg);
 
@@ -353,17 +326,12 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
     }
 
-    private GtfsRealtime.FeedMessage toGtfsRt(PubtransPulsarMessageData.ArrivalPulsarMessageData arrivalMsg) throws Exception {
-        PubtransTableProtos.ROIArrival arrival = arrivalMsg.actualPayload;
+    private GtfsRealtime.FeedMessage toGtfsRt(PubtransPulsarMessageData.StopEstimateMessageData estimate) throws Exception {
 
-        InternalMessages.StopEstimate estimate = PubtransFactory.createStopEstimate(
-                arrival.getCommon(),
-                arrival.getTripInfo(),
-                InternalMessages.StopEstimate.Type.ARRIVAL);
-        GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(estimate);
+        GtfsRealtime.TripUpdate tu = GtfsRtFactory.newTripUpdate(estimate.actualPayload);
 
-        Long timestampAsSecs = arrivalMsg.eventTime.map(utcMs -> utcMs / 1000).get();
-        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(arrivalMsg.dvjId), tu, timestampAsSecs);
+        Long timestampAsSecs = estimate.eventTime.map(utcMs -> utcMs / 1000).get();
+        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(Long.toString(estimate.dvjId), tu, timestampAsSecs);
         return feedMessage;
     }
 
@@ -376,7 +344,6 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         TypedMessageBuilder<byte[]> builder = producer.newMessage().value(payload)
                 .eventTime(timestampEpochMs)
                 .key(dvjIdAsString)
-                .property(TransitdataProperties.KEY_DVJ_ID, dvjIdAsString)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, schema.toString());
 
         builder.send();

@@ -8,11 +8,11 @@ import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.common.transitdata.TransitdataSchema;
+import fi.hsl.transitdata.tripupdate.processing.AbstractMessageProcessor;
+import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
-import fi.hsl.transitdata.tripupdate.processing.ArrivalProcessor;
-import fi.hsl.transitdata.tripupdate.processing.DepartureProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
 import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class MessageRouter implements IMessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
 
-    private Map<ProtobufSchema, IMessageProcessor> processors = new HashMap<>();
+    private Map<ProtobufSchema, AbstractMessageProcessor> processors = new HashMap<>();
     private List<ITripUpdateValidator> tripUpdateValidators;
 
     private Consumer<byte[]> consumer;
@@ -47,8 +47,7 @@ public class MessageRouter implements IMessageHandler {
         //Let's use the same instance of TripUpdateProcessor.
         TripUpdateProcessor tripUpdateProcessor = new TripUpdateProcessor(context.getProducer());
 
-        processors.put(ProtobufSchema.PubtransRoiArrival, new ArrivalProcessor(tripUpdateProcessor));
-        processors.put(ProtobufSchema.PubtransRoiDeparture, new DepartureProcessor(tripUpdateProcessor));
+        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor));
         processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
     }
 
@@ -68,12 +67,14 @@ public class MessageRouter implements IMessageHandler {
         try {
             Optional<TransitdataSchema> maybeSchema = TransitdataSchema.parseFromPulsarMessage(received);
             maybeSchema.ifPresent(schema -> {
-                IMessageProcessor processor = processors.get(schema.schema);
+                AbstractMessageProcessor processor = processors.get(schema.schema);
                 if (processor != null) {
-                    if (processor.validateMessage(received)) {
-                        Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = processor.processMessage(received);
+                    if (processor.validateMessage(received.getData())) {
+
+                        Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
                         if (maybeTripUpdate.isPresent()) {
-                            GtfsRealtime.TripUpdate tripUpdate = maybeTripUpdate.get();
+                            final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
+                            final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
                             boolean tripUpdateIsValid = true;
 
                             for (ITripUpdateValidator validator : tripUpdateValidators) {
@@ -82,7 +83,7 @@ public class MessageRouter implements IMessageHandler {
 
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
-                                sendTripUpdate(tripUpdate, received.getProperty(TransitdataProperties.KEY_DVJ_ID), eventTimeMs);
+                                sendTripUpdate(pair, eventTimeMs);
                             }
                         }
                         else {
@@ -110,16 +111,19 @@ public class MessageRouter implements IMessageHandler {
         }
     }
 
-    private void sendTripUpdate(final GtfsRealtime.TripUpdate tripUpdate, final String dvjId, final long pulsarEventTimestamp) {
-        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(dvjId, tripUpdate, tripUpdate.getTimestamp());
+    private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+        final String tripId = tuIdPair.getTripId();
+        final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
+
+        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
         producer.newMessage()
-                .key(dvjId)
+                .key(tripId)
                 .eventTime(pulsarEventTimestamp)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
                 .value(feedMessage.toByteArray())
                 .sendAsync()
-                .thenRun(() -> log.debug("Sending TripUpdate for dvjId {} with {} StopTimeUpdates and status {}",
-                        dvjId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+                .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
+                        tripId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
 
     }
 }
