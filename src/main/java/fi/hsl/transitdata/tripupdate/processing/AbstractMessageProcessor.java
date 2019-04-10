@@ -1,10 +1,7 @@
-package fi.hsl.transitdata.tripupdate.application;
+package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.PubtransFactory;
-import fi.hsl.common.transitdata.proto.PubtransTableProtos;
-import fi.hsl.transitdata.tripupdate.processing.ProcessorUtils;
-import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +20,14 @@ public abstract class AbstractMessageProcessor {
             pair.tripId = id;
             pair.tripUpdate = tu;
             return Optional.of(pair);
+        }
+
+        public String getTripId() {
+            return tripId;
+        }
+
+        public GtfsRealtime.TripUpdate getTripUpdate() {
+            return tripUpdate;
         }
     }
 

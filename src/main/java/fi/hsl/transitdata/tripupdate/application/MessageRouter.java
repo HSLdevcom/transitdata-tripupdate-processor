@@ -8,6 +8,7 @@ import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.common.transitdata.TransitdataSchema;
+import fi.hsl.transitdata.tripupdate.processing.AbstractMessageProcessor;
 import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
@@ -73,7 +74,7 @@ public class MessageRouter implements IMessageHandler {
                         Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
                         if (maybeTripUpdate.isPresent()) {
                             final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
-                            final GtfsRealtime.TripUpdate tripUpdate = pair.tripUpdate;
+                            final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
                             boolean tripUpdateIsValid = true;
 
                             for (ITripUpdateValidator validator : tripUpdateValidators) {
@@ -111,8 +112,8 @@ public class MessageRouter implements IMessageHandler {
     }
 
     private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
-        final String tripId = tuIdPair.tripId;
-        final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.tripUpdate;
+        final String tripId = tuIdPair.getTripId();
+        final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
 
         GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
         producer.newMessage()
