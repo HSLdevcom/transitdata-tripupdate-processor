@@ -36,7 +36,7 @@ public class StopEstimateProcessorTest {
 
     private void testValidationForStopEstimate(boolean shouldPass, String routeName, int direction, InternalMessages.StopEstimate.Type eventType) throws Exception {
         long dvjId = MockDataUtils.generateValidJoreId();
-        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(dvjId).build();
+        PubtransTableProtos.Common common = MockDataUtils.mockCommon(dvjId).build();
         PubtransTableProtos.DOITripInfo mockTripInfo = MockDataUtils.mockDOITripInfo(dvjId, routeName, direction);
         InternalMessages.StopEstimate estimate = PubtransFactory.createStopEstimate(common, mockTripInfo, eventType);
 

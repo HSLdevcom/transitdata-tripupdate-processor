@@ -54,7 +54,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromTripCancellationWithLetterAndNumberIsRenamedProperly() {
+    public void newTripUpdateFromTripCancellationWithLetterAndNumberIsRenamedProperly() throws Exception {
 
         InternalMessages.TripCancellation tripCancellation = MockDataUtils.mockTripCancellation("1010H4");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(tripCancellation, 1542096708);
@@ -63,7 +63,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromTripCancellationWithSpaceAndNumberIsRenamedProperly() {
+    public void newTripUpdateFromTripCancellationWithSpaceAndNumberIsRenamedProperly() throws Exception {
 
         InternalMessages.TripCancellation tripCancellation = MockDataUtils.mockTripCancellation("1010 3");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(tripCancellation, 1542096708);
@@ -72,7 +72,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromTripCancellationWithFourCharactersIsNotRenamed() {
+    public void newTripUpdateFromTripCancellationWithFourCharactersIsNotRenamed() throws Exception {
 
         InternalMessages.TripCancellation tripCancellation = MockDataUtils.mockTripCancellation("1010");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(tripCancellation, 1542096708);
@@ -81,7 +81,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromTripCancellationWithOneLetterIsNotRenamed() {
+    public void newTripUpdateFromTripCancellationWithOneLetterIsNotRenamed() throws Exception {
 
         InternalMessages.TripCancellation tripCancellation = MockDataUtils.mockTripCancellation("1010H");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(tripCancellation, 1542096708);
@@ -90,7 +90,7 @@ public class GtfsRtFactoryTest {
     }
 
     @Test
-    public void newTripUpdateFromTripCancellationWithTwoLettersIsNotRenamed() {
+    public void newTripUpdateFromTripCancellationWithTwoLettersIsNotRenamed() throws Exception {
 
         InternalMessages.TripCancellation tripCancellation = MockDataUtils.mockTripCancellation("1010HK");
         GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(tripCancellation, 1542096708);
