@@ -15,12 +15,12 @@ public class ProcessorUtils {
     static final Pattern TRAIN_ROUTE_PATTERN = Pattern.compile(TRAIN_ROUTE_NAME_REGEX);
 
 
-    static boolean validateRouteName(String routeName) {
+    public static boolean validateRouteName(String routeName) {
         Matcher matcher = JORE_ROUTE_PATTERN.matcher(routeName);
         return matcher.matches();
     }
 
-    static boolean isTrainRoute(String routeName) {
+    public static boolean isTrainRoute(String routeName) {
         Matcher matcher = TRAIN_ROUTE_PATTERN.matcher(routeName);
         return matcher.find();
     }
