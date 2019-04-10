@@ -45,10 +45,8 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
             final String tripId = tripCancellation.getTripId();
 
-            Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = tripUpdateProcessor.processTripCancellation(msg.getEventTime(), tripCancellation);
-            return maybeTripUpdate.flatMap(tripUpdate ->
-                    TripUpdateWithId.newInstance(tripId, tripUpdate)
-            );
+            GtfsRealtime.TripUpdate tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            return TripUpdateWithId.newInstance(tripId, tripUpdate);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
             return Optional.empty();
