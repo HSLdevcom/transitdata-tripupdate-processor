@@ -16,6 +16,7 @@ import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -185,6 +186,62 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
         assertEquals(localTime, trip.getStartTime());
     }
 
+    @Test
+    public void testRunningStatusCancellation() throws Exception {
+        final InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, route, joreDirection, dateTime, InternalMessages.TripCancellation.Status.CANCELED);
+
+        long startTimeEpochMs = dateTime.toEpochSecond(ZoneOffset.UTC) * 1000;
+        PubtransTableProtos.Common common = MockDataUtils.mockCommon(dvjId, stopSequence, startTimeEpochMs).build();
+        PubtransTableProtos.DOITripInfo mockTripInfo = MockDataUtils.mockDOITripInfo(dvjId, route, stopId, startTimeEpochMs);
+
+        final InternalMessages.StopEstimate estimate = PubtransFactory.createStopEstimate(common, mockTripInfo, InternalMessages.StopEstimate.Type.DEPARTURE);
+        final InternalMessages.TripCancellation running = MockDataUtils.mockTripCancellation(dvjId, route, joreDirection, dateTime, InternalMessages.TripCancellation.Status.RUNNING);
+
+        TestPipeline.TestLogic logic = new TestPipeline.TestLogic() {
+            @Override
+            public void testImpl(TestPipeline.TestContext context) throws Exception {
+                {
+                    final long ts = System.currentTimeMillis();
+                    sendPubtransSourcePulsarMessage(context.source, new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, ts, dvjId));
+
+                    logger.info("Cancellation sent, reading it back");
+
+                    Message<byte[]> received = TestPipeline.readOutputMessage(context);
+                    assertNotNull(received);
+                    validatePulsarProperties(received, Long.toString(dvjId), ts, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                    validateScheduledRelationshipAndStopEstimateCountFromGtfsRtFeedMessage(received.getData(),
+                            GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, 0);
+                }
+                {
+                    final long ts = System.currentTimeMillis();
+                    sendPubtransSourcePulsarMessage(context.source, new PubtransPulsarMessageData.StopEstimateMessageData(estimate, ts, dvjId));
+
+                    logger.info("Estimate sent, reading it back");
+
+                    Message<byte[]> received = TestPipeline.readOutputMessage(context);
+                    assertNotNull(received);
+                    validatePulsarProperties(received, Long.toString(dvjId), ts, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                    // Status should be still cancelled
+                    validateScheduledRelationshipAndStopEstimateCountFromGtfsRtFeedMessage(received.getData(),
+                            GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, 0);
+                }
+
+            }
+        };
+        final String testId = "running-after-cancelled-with-estimates";
+        PulsarApplication testApp = createPulsarApp("integration-test.conf", testId);
+        IMessageHandler handlerToTest = new MessageRouter(testApp.getContext());
+        testPulsarMessageHandler(handlerToTest, testApp, logic, testId);
+    }
+
+    private void validateScheduledRelationshipAndStopEstimateCountFromGtfsRtFeedMessage(byte[] received,
+                                                                                        GtfsRealtime.TripDescriptor.ScheduleRelationship expectedStatus,
+                                                                                        int expectedStopEstimateCount
+                                                                                        ) throws Exception {
+        GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom(received);
+        assertEquals(expectedStatus, feedMessage.getEntity(0).getTripUpdate().getTrip().getScheduleRelationship());
+        assertEquals(expectedStopEstimateCount, feedMessage.getEntity(0).getTripUpdate().getStopTimeUpdateCount());
+    }
 
     @Test
     public void testValidArrivalStopEvent() throws Exception {
