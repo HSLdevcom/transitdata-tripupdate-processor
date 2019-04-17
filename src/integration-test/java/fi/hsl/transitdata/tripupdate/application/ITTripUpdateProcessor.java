@@ -187,7 +187,7 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
     }
 
     @Test
-    public void testRunningStatusCancellation() throws Exception {
+    public void testTogglingCancellationStatus() throws Exception {
         final InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, route, joreDirection, dateTime, InternalMessages.TripCancellation.Status.CANCELED);
 
         long startTimeEpochMs = dateTime.toEpochSecond(ZoneOffset.UTC) * 1000;
@@ -219,13 +219,36 @@ public class ITTripUpdateProcessor extends ITBaseTestSuite {
                     logger.info("Estimate sent, reading it back");
 
                     Message<byte[]> received = TestPipeline.readOutputMessage(context);
+                    // Trip should be cancelled so we shouldn't receive an estimate.
+                    assertNull(received);
+                }
+                {
+                    final long ts = System.currentTimeMillis();
+                    sendPubtransSourcePulsarMessage(context.source, new PubtransPulsarMessageData.CancellationPulsarMessageData(running, ts, dvjId));
+
+                    logger.info("Running sent, reading it back");
+
+                    Message<byte[]> received = TestPipeline.readOutputMessage(context);
+                    // Now we should receive the estimate with correct status and it should include the estimate sent earlier.
                     assertNotNull(received);
                     validatePulsarProperties(received, Long.toString(dvjId), ts, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
-                    // Status should be still cancelled
+                    validateScheduledRelationshipAndStopEstimateCountFromGtfsRtFeedMessage(received.getData(),
+                            GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED, 1);
+
+                }
+                {
+                    final long ts = System.currentTimeMillis();
+                    sendPubtransSourcePulsarMessage(context.source, new PubtransPulsarMessageData.CancellationPulsarMessageData(cancellation, ts, dvjId));
+
+                    logger.info("Cancelling again, reading it back");
+
+                    Message<byte[]> received = TestPipeline.readOutputMessage(context);
+                    assertNotNull(received);
+                    validatePulsarProperties(received, Long.toString(dvjId), ts, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate);
+                    //Cancellation should strip out the estimates again.
                     validateScheduledRelationshipAndStopEstimateCountFromGtfsRtFeedMessage(received.getData(),
                             GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, 0);
                 }
-
             }
         };
         final String testId = "running-after-cancelled-with-estimates";
