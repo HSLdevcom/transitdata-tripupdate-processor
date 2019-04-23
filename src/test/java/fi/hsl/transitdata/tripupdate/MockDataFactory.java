@@ -2,65 +2,30 @@ package fi.hsl.transitdata.tripupdate;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.MockDataUtils;
-import fi.hsl.common.transitdata.RouteData;
-import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.common.transitdata.proto.PubtransTableProtos;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
-import fi.hsl.transitdata.tripupdate.models.StopEvent;
-
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 public class MockDataFactory {
 
-    public static final long DEFAULT_DVJ_ID = 1234567890L;
-
-    public static StopEvent mockStopEvent(PubtransTableProtos.Common common, Map<String, String> mockProps, StopEvent.EventType eventType) {
-        return StopEvent.newInstance(common, mockProps, eventType);
-    }
-
-    public static StopEvent mockStopEvent(StopEvent.EventType eventType, long startTimeEpoch) {
-        return mockStopEvent(eventType, 0, startTimeEpoch);
-    }
-
-    public static GtfsRealtime.TripUpdate.StopTimeEvent mockStopTimeEvent(StopEvent.EventType eventType, long startTimeEpoch) {
+    public static GtfsRealtime.TripUpdate.StopTimeEvent mockStopTimeEvent(InternalMessages.StopEstimate.Type eventType, long startTimeEpoch) throws Exception {
         GtfsRealtime.TripUpdate.StopTimeUpdate update = mockStopTimeUpdate(eventType, startTimeEpoch);
-        if (eventType == StopEvent.EventType.Arrival)
+        if (eventType == InternalMessages.StopEstimate.Type.ARRIVAL)
             return update.getArrival();
         else
             return update.getDeparture();
     }
 
-    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(StopEvent.EventType eventType, long startTimeEpoch) {
-        StopEvent event = MockDataFactory.mockStopEvent(eventType, startTimeEpoch);
-        return GtfsRtFactory.newStopTimeUpdate(event);
+
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(InternalMessages.StopEstimate.Type eventType, long startTimeEpoch) throws Exception {
+        InternalMessages.StopEstimate estimate = MockDataUtils.mockStopEstimate(eventType, startTimeEpoch);
+        return GtfsRtFactory.newStopTimeUpdate(estimate);
     }
 
-    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(StopEvent arrival, StopEvent departure) {
+    public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(InternalMessages.StopEstimate arrival, InternalMessages.StopEstimate departure) {
         GtfsRealtime.TripUpdate.StopTimeUpdate arrivalUpdate = GtfsRtFactory.newStopTimeUpdate(arrival);
         GtfsRealtime.TripUpdate.StopTimeUpdate departureUpdate = GtfsRtFactory.newStopTimeUpdate(departure);
         //Merge these two
         return arrivalUpdate.toBuilder().setDeparture(departureUpdate.getDeparture()).build();
-    }
-
-    public static StopEvent mockStopEvent(StopEvent.EventType eventType, int stopSequence, long startTimeEpoch) {
-        PubtransTableProtos.Common common = MockDataUtils.generateValidCommon(DEFAULT_DVJ_ID, stopSequence, startTimeEpoch * 1000).build();
-        final int stopId = stopSequence;
-
-        Map<String, String> props = new RouteData(stopId, GtfsRtFactory.DIRECTION_ID_INBOUND, "route-name", startTimeEpoch).toMap();
-        return StopEvent.newInstance(common, props, eventType);
-    }
-
-    public static StopEvent mockStopEvent(String routeId) {
-
-        Map<String, String> mockProperties = new RouteData(MockDataUtils.generateValidJoreId(), GtfsRtFactory.DIRECTION_ID_OUTBOUND, routeId, "20180101", "11:22:00").toMap();
-        PubtransTableProtos.Common mockCommon = MockDataUtils.generateValidCommon().build();
-        return StopEvent.newInstance(mockCommon, mockProperties, StopEvent.EventType.Arrival);
     }
 
     public static GtfsRealtime.TripUpdate.StopTimeUpdate mockStopTimeUpdate(String stopId, long arrivalTime,
@@ -86,24 +51,6 @@ public class MockDataFactory {
         return stopTimeUpdateBuilder.setStopId(stopId).build();
     }
 
-    public static InternalMessages.TripCancellation mockTripCancellation(String routeId, int directionId,
-                                                                         String startDate, String startTime) {
-
-        InternalMessages.TripCancellation.Builder tripCancellationBuilder = InternalMessages.TripCancellation.newBuilder();
-
-        tripCancellationBuilder.setRouteId(routeId)
-                .setDirectionId(directionId)
-                .setStartDate(startDate)
-                .setStartTime(startTime)
-                .setSchemaVersion(tripCancellationBuilder.getSchemaVersion())
-                .setStatus(InternalMessages.TripCancellation.Status.CANCELED);
-
-        return tripCancellationBuilder.build();
-    }
-
-    public static InternalMessages.TripCancellation mockTripCancellation(String routeId) {
-        return mockTripCancellation(routeId, 0, "20180101", "11:22:00");
-    }
 
     public static GtfsRealtime.TripUpdate mockTripUpdate(String routeId, int directionId,
                                                       String startDate, String startTime,

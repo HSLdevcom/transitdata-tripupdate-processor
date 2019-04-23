@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fi.hsl.transitdata</groupId>
     <artifactId>transitdata-tripupdate-processor</artifactId>
-    <version>0.4.4</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <repositories>
@@ -17,8 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <pulsar.version>2.1.0-incubating</pulsar.version>
-        <common.version>0.7.3</common.version>
+        <common.version>1.0.0</common.version>
         <testcontainers.version>1.9.0</testcontainers.version>
     </properties>
     <profiles>
