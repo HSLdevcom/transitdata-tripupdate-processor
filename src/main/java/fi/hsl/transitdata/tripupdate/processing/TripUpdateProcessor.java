@@ -49,7 +49,6 @@ public class TripUpdateProcessor {
     }
 
     public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
-        TripUpdate tripUpdate = null;
         try {
             final StopTimeUpdate latest = updateStopTimeUpdateCache(stopEstimate);
             final String tripKey = cacheKey(stopEstimate);
@@ -58,13 +57,20 @@ public class TripUpdateProcessor {
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
-            tripUpdate = updateTripUpdateCacheWithStopTimes(stopEstimate, validated);
-            //According to GTFS spec, timestamp identifies the moment when the content of this feed has been created in POSIX time
+            TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEstimate, validated);
+            if (tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
+                //We want to act only if the status is still scheduled, let's not send estimates on cancelled trips.
+                return Optional.of(tripUpdate);
+            }
+            else {
+                log.debug("Discarding non-scheduled stop estimate");
+                return Optional.empty();
+            }
+
         } catch (Exception e) {
             log.error("Exception while translating StopEstimate into TripUpdate", e);
+            return Optional.empty();
         }
-
-        return Optional.ofNullable(tripUpdate);
 
     }
 
