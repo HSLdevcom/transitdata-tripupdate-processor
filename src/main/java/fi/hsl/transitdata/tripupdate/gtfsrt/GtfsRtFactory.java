@@ -3,6 +3,7 @@ package fi.hsl.transitdata.tripupdate.gtfsrt;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.proto.InternalMessages;
+import fi.hsl.transitdata.tripupdate.processing.ProcessorUtils;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,11 +69,14 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
-        final String routeName = reformatRouteName(estimate.getTripInfo().getRouteId());
         final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
+        String routeId = estimate.getTripInfo().getRouteId();
+        if (!ProcessorUtils.isMetroRoute(routeId)) {
+            routeId = reformatRouteName(routeId);
+        }
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(routeName)
+                .setRouteId(routeId)
                 .setDirectionId(direction)
                 .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
@@ -88,8 +92,13 @@ public class GtfsRtFactory {
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
         final int gtfsRtDirection = PubtransFactory.joreDirectionToGtfsDirection(cancellation.getDirectionId());
+        String routeId = cancellation.getRouteId();
+        if (!ProcessorUtils.isMetroRoute(routeId)) {
+            routeId = reformatRouteName(routeId);
+        }
+
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(reformatRouteName(cancellation.getRouteId()))
+                .setRouteId(routeId)
                 .setDirectionId(gtfsRtDirection)
                 .setStartDate(cancellation.getStartDate())
                 .setStartTime(cancellation.getStartTime())
@@ -104,7 +113,6 @@ public class GtfsRtFactory {
     }
 
     static String reformatRouteName(String routeName) {
-
         Pattern routePattern = Pattern.compile(ROUTE_NUMBER_REMOVAL_REGEX);
         Matcher matcher = routePattern.matcher(routeName);
         matcher.find();
