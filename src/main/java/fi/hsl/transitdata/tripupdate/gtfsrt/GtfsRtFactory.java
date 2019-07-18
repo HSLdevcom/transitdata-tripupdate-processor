@@ -15,6 +15,7 @@ public class GtfsRtFactory {
 
     //Discard the last character of the route name when it is a number, and trim the possible trailing whitespace
     private static final String ROUTE_NUMBER_REMOVAL_REGEX = "(\\d{4}[a-zA-Z]{0,2})";
+    private static final Pattern ROUTE_NUMBER_PATTERN = Pattern.compile(ROUTE_NUMBER_REMOVAL_REGEX);
 
     private GtfsRtFactory() {
     }
@@ -72,7 +73,7 @@ public class GtfsRtFactory {
         final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
         String routeId = estimate.getTripInfo().getRouteId();
         if (!ProcessorUtils.isMetroRoute(routeId)) {
-            routeId = reformatRouteName(routeId);
+            routeId = reformatRouteId(routeId);
         }
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
@@ -94,7 +95,7 @@ public class GtfsRtFactory {
         final int gtfsRtDirection = PubtransFactory.joreDirectionToGtfsDirection(cancellation.getDirectionId());
         String routeId = cancellation.getRouteId();
         if (!ProcessorUtils.isMetroRoute(routeId)) {
-            routeId = reformatRouteName(routeId);
+            routeId = reformatRouteId(routeId);
         }
 
         GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
@@ -112,9 +113,8 @@ public class GtfsRtFactory {
         return tripUpdateBuilder.build();
     }
 
-    static String reformatRouteName(String routeName) {
-        Pattern routePattern = Pattern.compile(ROUTE_NUMBER_REMOVAL_REGEX);
-        Matcher matcher = routePattern.matcher(routeName);
+    static String reformatRouteId(String routeId) {
+        Matcher matcher = ROUTE_NUMBER_PATTERN.matcher(routeId);
         matcher.find();
         return matcher.group(1);
     }
