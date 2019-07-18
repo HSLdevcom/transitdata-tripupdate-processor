@@ -47,7 +47,7 @@ public abstract class AbstractMessageProcessor {
 
 
     protected boolean validateTripData(String routeName, int direction) {
-        if (!ProcessorUtils.validateRouteName(routeName)) {
+        if (!ProcessorUtils.validateRouteName(routeName) && !ProcessorUtils.isMetroRoute(routeName)) {
             logger.warn("Invalid route name {}, discarding message", routeName);
             return false;
         }
