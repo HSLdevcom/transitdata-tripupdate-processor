@@ -29,7 +29,11 @@ public class TripIdCache {
     private LoadingCache<TripDetails, Optional<String>> tripIdCache = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<TripDetails, Optional<String>>() {
         @Override
         public Optional<String> load(TripDetails tripDetails) throws Exception {
-            return getTripIdFromDigitransitAPI(tripDetails.routeId, tripDetails.operatingDay, tripDetails.startTime, tripDetails.directionId);
+            Optional<String> maybeTripId = getTripIdFromDigitransitAPI(tripDetails.routeId, tripDetails.operatingDay, tripDetails.startTime, tripDetails.directionId);
+            if (!maybeTripId.isPresent()) {
+                logger.warn("No trip ID found for {} / {} / {} / {}", tripDetails.routeId, tripDetails.operatingDay, tripDetails.startTime, tripDetails.directionId);
+            }
+            return maybeTripId;
         }
     });
 
