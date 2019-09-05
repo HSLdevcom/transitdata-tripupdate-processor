@@ -68,7 +68,10 @@ public class TripIdCache {
                 if (data.has("fuzzyTrip")) {
                     JSONObject fuzzyTrip = data.optJSONObject("fuzzyTrip");
                     if (fuzzyTrip.has("gtfsId")) {
-                        return Optional.ofNullable(fuzzyTrip.optString("gtfsId"));
+                        String tripId = fuzzyTrip.optString("gtfsId");
+                        if (tripId != null) {
+                            return Optional.of(tripId.replaceFirst("HSL:", ""));
+                        }
                     }
                 }
             }
