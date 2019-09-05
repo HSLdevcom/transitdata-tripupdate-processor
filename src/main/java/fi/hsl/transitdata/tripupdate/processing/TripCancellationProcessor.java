@@ -15,6 +15,9 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
 
     private final TripUpdateProcessor tripUpdateProcessor;
 
+    //Trip ID cache, used cache trip IDs from Digitransit API that are added to trip cancellation messages
+    private final TripIdCache tripIdCache = new TripIdCache();
+
     public TripCancellationProcessor(TripUpdateProcessor tripUpdateProcessor) {
         this.tripUpdateProcessor = tripUpdateProcessor;
     }
@@ -46,6 +49,21 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
             final String tripId = tripCancellation.getTripId();
 
             GtfsRealtime.TripUpdate tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+
+            //Add trip ID to trip descriptor
+            if (!tripUpdate.getTrip().hasTripId()) {
+                GtfsRealtime.TripDescriptor.Builder tripBuilder = tripUpdate.getTrip().toBuilder();
+
+                Optional<String> maybeTripId = tripIdCache.getTripId(tripCancellation.getRouteId(), tripCancellation.getStartDate(), tripCancellation.getStartTime(), tripCancellation.getDirectionId());
+                if (maybeTripId.isPresent()) {
+                    tripBuilder.setTripId(maybeTripId.get());
+                } else {
+                    log.warn("No trip ID found for trip { route: {}, date: {}, start time: {}, direction: {} }", tripCancellation.getRouteId(), tripCancellation.getStartDate(), tripCancellation.getStartTime(), tripCancellation.getDirectionId());
+                }
+
+                tripUpdate = tripUpdate.toBuilder().setTrip(tripBuilder).build();
+            }
+
             return TripUpdateWithId.newInstance(tripId, tripUpdate);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
