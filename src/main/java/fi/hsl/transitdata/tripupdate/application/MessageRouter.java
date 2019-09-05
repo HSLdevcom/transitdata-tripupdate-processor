@@ -8,13 +8,10 @@ import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.common.transitdata.TransitdataSchema;
-import fi.hsl.transitdata.tripupdate.processing.AbstractMessageProcessor;
-import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
+import fi.hsl.transitdata.tripupdate.processing.*;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
-import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
-import fi.hsl.transitdata.tripupdate.processing.TripUpdateProcessor;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
@@ -48,7 +45,7 @@ public class MessageRouter implements IMessageHandler {
         TripUpdateProcessor tripUpdateProcessor = new TripUpdateProcessor(context.getProducer());
 
         processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor));
-        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
+        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor, new TripIdCache(config.getString("cancellations.digitransitApiUrl"))));
     }
 
     private List<ITripUpdateValidator> registerTripUpdateValidators() {
