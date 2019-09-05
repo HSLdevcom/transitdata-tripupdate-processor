@@ -16,10 +16,11 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
     private final TripUpdateProcessor tripUpdateProcessor;
 
     //Trip ID cache, used cache trip IDs from Digitransit API that are added to trip cancellation messages
-    private final TripIdCache tripIdCache = new TripIdCache();
+    private final TripIdCache tripIdCache;
 
-    public TripCancellationProcessor(TripUpdateProcessor tripUpdateProcessor) {
+    public TripCancellationProcessor(TripUpdateProcessor tripUpdateProcessor, TripIdCache tripIdCache) {
         this.tripUpdateProcessor = tripUpdateProcessor;
+        this.tripIdCache = tripIdCache;
     }
 
     @Override

@@ -33,6 +33,12 @@ public class TripIdCache {
         }
     });
 
+    private String digitransitApiUrl;
+
+    public TripIdCache(String digitransitApiUrl) {
+        this.digitransitApiUrl = digitransitApiUrl;
+    }
+
     public Optional<String> getTripId(String routeId, String operatingDay, String startTime, int directionId) {
         try {
             return tripIdCache.get(new TripDetails(routeId, operatingDay, startTime, directionId));
@@ -42,9 +48,8 @@ public class TripIdCache {
         }
     }
 
-    private static Optional<String> getTripIdFromDigitransitAPI(String routeId, String operatingDay, String startTime, int directionId) throws IOException {
-        //TODO: maybe this URL should be configurable?
-        URLConnection connection = new URL("https://api.digitransit.fi/routing/v1/routers/hsl/index/graphql").openConnection();
+    private Optional<String> getTripIdFromDigitransitAPI(String routeId, String operatingDay, String startTime, int directionId) throws IOException {
+        URLConnection connection = new URL(digitransitApiUrl).openConnection();
         connection.setDoOutput(true);
         connection.setRequestProperty("Content-Type", "application/graphql");
         connection.connect();
