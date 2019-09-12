@@ -10,25 +10,18 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 public class TripCancellationProcessorTest {
-    private TripIdCache emptyTripIdCache = new TripIdCache(null) {
-        @Override
-        public Optional<String> getTripId(String routeId, String operatingDay, String startTime, int directionId) {
-            return Optional.empty();
-        }
-    };
 
     @Test
     public void messageWithWrongPayloadIsDiscarded() throws Exception {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(MockDataUtils.generateValidJoreId(),
                 MockDataUtils.generateValidRouteName(),
                 System.currentTimeMillis());
-        TripCancellationProcessor proc = new TripCancellationProcessor(null, emptyTripIdCache);
+        TripCancellationProcessor proc = new TripCancellationProcessor(null);
 
         assertFalse(proc.validateMessage(arrival.toByteArray()));
     }
@@ -52,7 +45,7 @@ public class TripCancellationProcessorTest {
         LocalDateTime someOperatingTime = Instant.now().plus(Duration.ofHours(5)).atOffset(ZoneOffset.UTC).toLocalDateTime();
         InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, routeName, direction, someOperatingTime);
 
-        TripCancellationProcessor proc = new TripCancellationProcessor(null, emptyTripIdCache);
+        TripCancellationProcessor proc = new TripCancellationProcessor(null);
 
         assertEquals(shouldPass, proc.validateMessage(cancellation.toByteArray()));
     }
