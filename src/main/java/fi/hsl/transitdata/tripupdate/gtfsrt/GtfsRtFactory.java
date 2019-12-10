@@ -81,7 +81,9 @@ public class GtfsRtFactory {
                 .setDirectionId(direction)
                 .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
-                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED)
+                .setScheduleRelationship((estimate.getTripInfo().hasScheduled() && !estimate.getTripInfo().getScheduled()) ?
+                        GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED :
+                        GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED)
                 .build();
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
