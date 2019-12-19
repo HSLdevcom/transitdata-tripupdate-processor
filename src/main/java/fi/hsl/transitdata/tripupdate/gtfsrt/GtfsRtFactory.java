@@ -81,9 +81,7 @@ public class GtfsRtFactory {
                 .setDirectionId(direction)
                 .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
-                .setScheduleRelationship((estimate.getTripInfo().hasScheduled() && !estimate.getTripInfo().getScheduled()) ?
-                        GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED :
-                        GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED)
+                .setScheduleRelationship(mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType()))
                 .build();
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
@@ -91,6 +89,18 @@ public class GtfsRtFactory {
                 .setTimestamp(lastModified(estimate));
 
         return tripUpdateBuilder.build();
+    }
+
+    private static GtfsRealtime.TripDescriptor.ScheduleRelationship mapInternalScheduleTypeToGtfsRt(InternalMessages.TripInfo.ScheduleType scheduleType) {
+        switch (scheduleType) {
+            case ADDED:
+                return GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED;
+            case UNSCHEDULED:
+                return GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED;
+            case SCHEDULED:
+            default:
+                return GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
+        }
     }
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
