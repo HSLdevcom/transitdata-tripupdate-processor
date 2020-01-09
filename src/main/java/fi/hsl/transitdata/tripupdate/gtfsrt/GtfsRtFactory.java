@@ -76,13 +76,17 @@ public class GtfsRtFactory {
             routeId = reformatRouteId(routeId);
         }
 
-        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
+        GtfsRealtime.TripDescriptor.Builder tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(routeId)
                 .setDirectionId(direction)
                 .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
-                .setScheduleRelationship(mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType()))
-                .build();
+                .setScheduleRelationship(mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType()));
+
+        //Trips outside of static schedule need trip ID to be accepted by OTP
+        if (estimate.getTripInfo().getScheduleType() != InternalMessages.TripInfo.ScheduleType.SCHEDULED) {
+            tripDescriptor.setTripId(generateTripId(estimate.getTripInfo()));
+        }
 
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
@@ -129,5 +133,14 @@ public class GtfsRtFactory {
         Matcher matcher = ROUTE_NUMBER_PATTERN.matcher(routeId);
         matcher.find();
         return matcher.group(1);
+    }
+
+    /**
+     * Generates a trip ID for trips outside of static schedule from trip info
+     * @param tripInfo
+     * @return Trip ID
+     */
+    private static String generateTripId(InternalMessages.TripInfo tripInfo) {
+        return tripInfo.getRouteId()+"_"+tripInfo.getOperatingDay()+"_"+tripInfo.getStartTime()+"_"+tripInfo.getDirectionId();
     }
 }
