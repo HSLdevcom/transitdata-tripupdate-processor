@@ -14,7 +14,8 @@ public class GtfsRtValidator {
         List<StopTimeUpdate> fixedTimestamps = validateArrivalsAndDepartures(rawEstimates, latest);
         List<StopTimeUpdate> removedStops = removeStopSequences(fixedTimestamps);
         List<StopTimeUpdate> filledEvents = fillMissingArrivalsAndDepartures(removedStops);
-        return filledEvents;
+        List<StopTimeUpdate> removedEstimatesFromNoData = removeEstimatesFromNoDataUpdates(filledEvents);
+        return removedEstimatesFromNoData;
     }
 
     /**
@@ -149,5 +150,15 @@ public class GtfsRtValidator {
                     return event;
                 }
             }).orElse(event));
+    }
+
+    static List<StopTimeUpdate> removeEstimatesFromNoDataUpdates(List<StopTimeUpdate> stopTimeUpdates) {
+        return stopTimeUpdates.stream().map(stu -> {
+            if (stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.NO_DATA) {
+                return stu.toBuilder().clearArrival().clearDeparture().build();
+            } else {
+                return stu;
+            }
+        }).collect(Collectors.toList());
     }
 }
