@@ -46,20 +46,32 @@ public class GtfsRtFactory {
             case SCHEDULED:
                 stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED);
                 break;
+            case NO_DATA:
+                //If there is no data for current or previous stop time update, set ScheduleRelationship to NO_DATA
+                if (previousUpdate == null || previousUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA) {
+                    stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA);
+                //Otherwise use ScheduleRelationship of previous stop time update
+                } else {
+                    stopTimeUpdateBuilder.setScheduleRelationship(previousUpdate.getScheduleRelationship());
+                }
+                break;
         }
-        // GTFS-RT treats times in seconds
-        long stopEventTimeInSeconds = stopEstimate.getEstimatedTimeUtcMs() / 1000;
 
-        GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setTime(stopEventTimeInSeconds)
-                .build();
-        switch (stopEstimate.getType()) {
-            case ARRIVAL:
-                stopTimeUpdateBuilder.setArrival(stopTimeEvent);
-                break;
-            case DEPARTURE:
-                stopTimeUpdateBuilder.setDeparture(stopTimeEvent);
-                break;
+        if (stopEstimate.hasEstimatedTimeUtcMs()) {
+            // GTFS-RT treats times in seconds
+            long stopEventTimeInSeconds = stopEstimate.getEstimatedTimeUtcMs() / 1000;
+
+            GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                    .setTime(stopEventTimeInSeconds)
+                    .build();
+            switch (stopEstimate.getType()) {
+                case ARRIVAL:
+                    stopTimeUpdateBuilder.setArrival(stopTimeEvent);
+                    break;
+                case DEPARTURE:
+                    stopTimeUpdateBuilder.setDeparture(stopTimeEvent);
+                    break;
+            }
         }
 
         return stopTimeUpdateBuilder.build();
