@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 public class GtfsRtValidatorTest {
     final static long[] SRC_ARRIVALS_MS =   new long[] { 1545674400000L, 1545674500000L, 1545674600000L };
@@ -280,4 +281,40 @@ public class GtfsRtValidatorTest {
         filledDepartures.forEach(sameTimeValidator);
     }
 
+    @Test
+    public void testRemoveEstimatesFromNoData() {
+        List<StopTimeUpdate> stopTimeUpdates = Arrays.asList(
+                StopTimeUpdate.newBuilder()
+                        .setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA)
+                        .setArrival(StopTimeEvent.newBuilder()
+                                .setTime(0)
+                                .build())
+                        .setDeparture(StopTimeEvent.newBuilder()
+                                .setTime(0)
+                                .build())
+                        .build(),
+                StopTimeUpdate.newBuilder()
+                        .setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED)
+                        .setArrival(StopTimeEvent.newBuilder()
+                                .setTime(0)
+                                .build())
+                        .setDeparture(StopTimeEvent.newBuilder()
+                                .setTime(0)
+                                .build())
+                        .build());
+
+        List<StopTimeUpdate> fixed = GtfsRtValidator.removeEstimatesFromNoDataUpdates(stopTimeUpdates);
+
+        Optional<StopTimeUpdate> noData = fixed.stream().filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.NO_DATA).findAny();
+
+        assertTrue(noData.isPresent());
+        assertFalse(noData.get().hasArrival());
+        assertFalse(noData.get().hasDeparture());
+
+        Optional<StopTimeUpdate> scheduled = fixed.stream().filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.SCHEDULED).findAny();
+
+        assertTrue(scheduled.isPresent());
+        assertTrue(scheduled.get().hasArrival());
+        assertTrue(scheduled.get().hasDeparture());
+    }
 }

@@ -6,8 +6,10 @@ import fi.hsl.common.transitdata.proto.InternalMessages;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TripUpdateProcessorTest {
     @Test
@@ -77,6 +79,60 @@ public class TripUpdateProcessorTest {
 
             index++;
         }
+    }
+
+    @Test
+    public void testCorrectScheduleTypeIsRestoredAfterCancellationOfCancellation() {
+        TripUpdateProcessor processor = new TripUpdateProcessor(null);
+
+        InternalMessages.TripInfo tripInfo = InternalMessages.TripInfo.newBuilder()
+                .setTripId("trip_1")
+                .setDirectionId(1)
+                .setOperatingDay("20200101")
+                .setStartTime("00:00:00")
+                .setRouteId("2550")
+                .setScheduleType(InternalMessages.TripInfo.ScheduleType.ADDED)
+                .build();
+
+        Optional<GtfsRealtime.TripUpdate> tripUpdate = processor.processStopEstimate(InternalMessages.StopEstimate.newBuilder()
+                .setSchemaVersion(1)
+                .setStopId("1")
+                .setStopSequence(1)
+                .setEstimatedTimeUtcMs(0)
+                .setScheduledTimeUtcMs(0)
+                .setLastModifiedUtcMs(0)
+                .setType(InternalMessages.StopEstimate.Type.ARRIVAL)
+                .setStatus(InternalMessages.StopEstimate.Status.SCHEDULED)
+                .setTripInfo(tripInfo)
+                .build());
+
+        assertTrue(tripUpdate.isPresent());
+        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED, tripUpdate.get().getTrip().getScheduleRelationship());
+
+        // 'messageKey' is trip ID
+        GtfsRealtime.TripUpdate tripCancellation = processor.processTripCancellation("trip_1", 0, InternalMessages.TripCancellation.newBuilder()
+                .setSchemaVersion(1)
+                .setTripId("trip_1")
+                .setDirectionId(1)
+                .setRouteId("2550")
+                .setStartDate("20200101")
+                .setStartTime("00:00:00")
+                .setStatus(InternalMessages.TripCancellation.Status.CANCELED)
+                .build());
+
+        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED, tripCancellation.getTrip().getScheduleRelationship());
+
+        GtfsRealtime.TripUpdate cancellationOfCancellation = processor.processTripCancellation("trip_1", 0, InternalMessages.TripCancellation.newBuilder()
+                .setSchemaVersion(1)
+                .setTripId("trip_1")
+                .setDirectionId(1)
+                .setRouteId("2550")
+                .setStartDate("20200101")
+                .setStartTime("00:00:00")
+                .setStatus(InternalMessages.TripCancellation.Status.RUNNING)
+                .build());
+
+        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED, cancellationOfCancellation.getTrip().getScheduleRelationship());
     }
 
 }
