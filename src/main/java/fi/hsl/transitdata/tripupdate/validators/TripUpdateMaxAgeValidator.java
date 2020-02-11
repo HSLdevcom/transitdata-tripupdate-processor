@@ -2,6 +2,9 @@ package fi.hsl.transitdata.tripupdate.validators;
 
 import com.google.transit.realtime.GtfsRealtime;
 
+import java.util.OptionalLong;
+import java.util.stream.Stream;
+
 public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
 
     private long tripUpdateMaxAgeInSeconds;
@@ -26,19 +29,18 @@ public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
             return true;
         }
 
-        int lastStopTimeUpdateIndex = tripUpdate.getStopTimeUpdateCount() - 1;
-        long tripLastStopTimeEventTime;
+        OptionalLong maxStopTimeEventTime = tripUpdate.getStopTimeUpdateList().stream()
+                .flatMap(stu -> stu.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA ?
+                        Stream.empty() :
+                        Stream.of(stu.getArrival(), stu.getDeparture()))
+                .mapToLong(GtfsRealtime.TripUpdate.StopTimeEvent::getTime)
+                .max();
 
-        if (tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).hasArrival()) {
-            tripLastStopTimeEventTime = tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).getArrival().getTime();
-        } else {
-            tripLastStopTimeEventTime = tripUpdate.getStopTimeUpdate(lastStopTimeUpdateIndex).getDeparture().getTime();
+        //If maximum stop event time is not present, all stop updates are NO_DATA -> trip update is valid
+        if (!maxStopTimeEventTime.isPresent()) {
+            return true;
         }
 
-        if (currentPosixTime - tripLastStopTimeEventTime > tripUpdateMaxAgeInSeconds) {
-            return false;
-        }
-
-        return true;
+        return currentPosixTime - maxStopTimeEventTime.getAsLong() <= tripUpdateMaxAgeInSeconds;
     }
 }
