@@ -178,7 +178,14 @@ public class TripUpdateProcessor {
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(cacheKey);
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, null);
-            builder.addAllStopTimeUpdate(validated);
+            if (validated.isEmpty()) {
+                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
+                stopTimeUpdateBuilder.setStopSequence(1);
+                stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA);
+                builder.addStopTimeUpdate(stopTimeUpdateBuilder.build());
+            } else {
+                builder.addAllStopTimeUpdate(validated);
+            }
         }
 
         TripUpdate newTripUpdate = builder.build();
