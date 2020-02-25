@@ -178,7 +178,16 @@ public class TripUpdateProcessor {
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(cacheKey);
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, null);
-            builder.addAllStopTimeUpdate(validated);
+            if (validated.isEmpty()) {
+                // This is probably cancellation of cancellation (CANCELED -> SCHEDULED/ADDED) as no stop time updates were available
+                // Gtfs-rt standard requires SCHEDULED (OR ADDED) trip update to contain at least one stop time update, thus let's add one
+                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
+                stopTimeUpdateBuilder.setStopSequence(1);
+                stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA);
+                builder.addStopTimeUpdate(stopTimeUpdateBuilder.build());
+            } else {
+                builder.addAllStopTimeUpdate(validated);
+            }
         }
 
         TripUpdate newTripUpdate = builder.build();
