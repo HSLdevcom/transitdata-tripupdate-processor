@@ -181,7 +181,7 @@ public class TripUpdateProcessor {
             if (validated.isEmpty()) {
                 // This is probably cancellation of cancellation (CANCELED -> SCHEDULED/ADDED) as no stop time updates were available
                 // Gtfs-rt standard requires SCHEDULED (OR ADDED) trip update to contain at least one stop time update, thus let's add one
-                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
+                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
                 stopTimeUpdateBuilder.setStopSequence(1);
                 stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA);
                 builder.addStopTimeUpdate(stopTimeUpdateBuilder.build());
