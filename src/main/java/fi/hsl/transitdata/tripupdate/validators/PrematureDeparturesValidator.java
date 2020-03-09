@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 public class PrematureDeparturesValidator implements ITripUpdateValidator {
 
@@ -37,22 +38,21 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             return false;
         }
 
-        long tripFirstStopTimeEventTime;
+        Optional<GtfsRealtime.TripUpdate.StopTimeUpdate> firstStopTimeUpdate = tripUpdate.getStopTimeUpdateList().stream()
+                .filter(stu -> stu.getScheduleRelationship() != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA)
+                .findFirst();
 
-        if (tripUpdate.getStopTimeUpdate(0).hasDeparture()) {
-            tripFirstStopTimeEventTime = tripUpdate.getStopTimeUpdate(0).getDeparture().getTime();
-        } else {
-            tripFirstStopTimeEventTime = tripUpdate.getStopTimeUpdate(0).getArrival().getTime();
+        //If stop time update is not present, all stop updates are NO_DATA -> trip update is valid
+        if (!firstStopTimeUpdate.isPresent()) {
+            return true;
         }
+
+        long firstStopTime = firstStopTimeUpdate.get().hasDeparture() ? firstStopTimeUpdate.get().getDeparture().getTime() : firstStopTimeUpdate.get().getArrival().getTime();
 
         long tripStartTimePosix = tripStartTimeToPosixTime(tripUpdate);
         //Filter out premature departures, where the departure time for the first StopTimeUpdate is more than the
         //configured amount of seconds before the scheduled departure time of the trip
-        if (tripStartTimePosix - tripFirstStopTimeEventTime > tripUpdateMinTimeBeforeDeparture ) {
-            return false;
-        }
-
-        return true;
+        return tripStartTimePosix - firstStopTime <= tripUpdateMinTimeBeforeDeparture;
     }
 
     long tripStartTimeToPosixTime(GtfsRealtime.TripUpdate tripUpdate) {

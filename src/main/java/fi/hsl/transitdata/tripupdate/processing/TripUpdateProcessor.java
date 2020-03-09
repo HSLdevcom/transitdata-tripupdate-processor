@@ -5,7 +5,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
-import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
@@ -13,6 +12,8 @@ import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -20,8 +21,9 @@ import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 import static com.google.transit.realtime.GtfsRealtime.*;
 
 public class TripUpdateProcessor {
-
     private static final Logger log = LoggerFactory.getLogger(TripUpdateProcessor.class);
+
+    private static final Duration CACHE_DURATION = Duration.of(4, ChronoUnit.HOURS);
 
     private Producer<byte[]> producer;
 
@@ -29,16 +31,18 @@ public class TripUpdateProcessor {
     private final LoadingCache<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>> stopTimeUpdateCache;
     //for each trip (identified by tripId-String) store the full TripUpdate containing all StopTimeUpdates
     private final Cache<String, GtfsRealtime.TripUpdate> tripUpdateCache;
+    //for each trip (identified by tripId-String), keep track of whether the trip is included in static schedule (so that correct schedule relationship can be restored in case of cancellation-of-cancellation)
+    private final Cache<String, TripDescriptor.ScheduleRelationship> scheduleRelationshipCache;
 
     public TripUpdateProcessor(Producer<byte[]> producer) {
         this.producer = producer;
 
         this.tripUpdateCache = CacheBuilder.newBuilder()
-                .expireAfterAccess(4, TimeUnit.HOURS)
+                .expireAfterAccess(CACHE_DURATION)
                 .build();
 
         this.stopTimeUpdateCache = CacheBuilder.newBuilder()
-                .expireAfterAccess(4, TimeUnit.HOURS)
+                .expireAfterAccess(CACHE_DURATION)
                 .build(new CacheLoader<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>>() {
                     @Override
                     public Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> load(String key) {
@@ -46,6 +50,10 @@ public class TripUpdateProcessor {
                         return new TreeMap<>();
                     }
                 });
+
+        this.scheduleRelationshipCache = CacheBuilder.newBuilder()
+                .expireAfterWrite(CACHE_DURATION)
+                .build();
     }
 
     public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
@@ -58,12 +66,14 @@ public class TripUpdateProcessor {
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
             TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEstimate, validated);
-            if (tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED) {
+            scheduleRelationshipCache.put(tripKey, tripUpdate.getTrip().getScheduleRelationship());
+            if (tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED
+                    || tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.ADDED) {
                 //We want to act only if the status is still scheduled, let's not send estimates on cancelled trips.
                 return Optional.of(tripUpdate);
             }
             else {
-                log.debug("Discarding non-scheduled stop estimate");
+                log.debug("Discarding cancelled stop estimate");
                 return Optional.empty();
             }
 
@@ -148,7 +158,9 @@ public class TripUpdateProcessor {
         final GtfsRealtime.TripDescriptor.ScheduleRelationship status =
                 cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ?
                     GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED :
-                    GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
+                    scheduleRelationshipCache.getIfPresent(cacheKey) != null ?
+                        scheduleRelationshipCache.getIfPresent(cacheKey) :
+                        TripDescriptor.ScheduleRelationship.SCHEDULED; //Assume that trip is scheduled if it is not found from the cache
 
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
                 .setScheduleRelationship(status)
@@ -160,13 +172,22 @@ public class TripUpdateProcessor {
                 .clearStopTimeUpdate();
 
 
-        if (status == TripDescriptor.ScheduleRelationship.SCHEDULED) {
+        if (status == TripDescriptor.ScheduleRelationship.SCHEDULED || status == TripDescriptor.ScheduleRelationship.ADDED) {
             // We need to re-attach all the StopTimeUpdates to the payload
 
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(cacheKey);
             // We need to clean up the "raw data" StopTimeUpdates for any inconsistencies
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, null);
-            builder.addAllStopTimeUpdate(validated);
+            if (validated.isEmpty()) {
+                // This is probably cancellation of cancellation (CANCELED -> SCHEDULED/ADDED) as no stop time updates were available
+                // Gtfs-rt standard requires SCHEDULED (OR ADDED) trip update to contain at least one stop time update, thus let's add one
+                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+                stopTimeUpdateBuilder.setStopSequence(1);
+                stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA);
+                builder.addStopTimeUpdate(stopTimeUpdateBuilder.build());
+            } else {
+                builder.addAllStopTimeUpdate(validated);
+            }
         }
 
         TripUpdate newTripUpdate = builder.build();
