@@ -66,9 +66,11 @@ public class TripUpdateProcessor {
             List<StopTimeUpdate> validated = GtfsRtValidator.cleanStopTimeUpdates(stopTimeUpdates, latest);
 
             TripUpdate tripUpdate = updateTripUpdateCacheWithStopTimes(stopEstimate, validated);
-            scheduleRelationshipCache.put(tripKey, tripUpdate.getTrip().getScheduleRelationship());
             if (tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.SCHEDULED
                     || tripUpdate.getTrip().getScheduleRelationship() == TripDescriptor.ScheduleRelationship.ADDED) {
+                //Save schedule relationship to cache to restore it in case of cancellation-of-cancellation
+                scheduleRelationshipCache.put(tripKey, tripUpdate.getTrip().getScheduleRelationship());
+
                 //We want to act only if the status is still scheduled, let's not send estimates on cancelled trips.
                 return Optional.of(tripUpdate);
             }
@@ -158,9 +160,8 @@ public class TripUpdateProcessor {
         final GtfsRealtime.TripDescriptor.ScheduleRelationship status =
                 cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ?
                     GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED :
-                    scheduleRelationshipCache.getIfPresent(cacheKey) != null ?
-                        scheduleRelationshipCache.getIfPresent(cacheKey) :
-                        TripDescriptor.ScheduleRelationship.SCHEDULED; //Assume that trip is scheduled if it is not found from the cache
+                        //Assume that trip is scheduled if it is not found from the cache
+                        Optional.ofNullable(scheduleRelationshipCache.getIfPresent(cacheKey)).orElse(TripDescriptor.ScheduleRelationship.SCHEDULED);
 
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
                 .setScheduleRelationship(status)
