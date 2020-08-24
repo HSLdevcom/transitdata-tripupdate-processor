@@ -83,7 +83,7 @@ public class GtfsRtFactory {
 
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
         final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
-        String routeId = estimate.getTripInfo().getRouteId();
+        String routeId = ProcessorUtils.removeVariant(estimate.getTripInfo().getRouteId());
         if (!ProcessorUtils.isMetroRoute(routeId)) {
             routeId = reformatRouteId(routeId);
         }

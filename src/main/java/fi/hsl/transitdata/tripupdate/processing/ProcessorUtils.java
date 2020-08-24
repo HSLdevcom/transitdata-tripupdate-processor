@@ -32,4 +32,8 @@ public class ProcessorUtils {
         Matcher matcher = METRO_ROUTE_PATTERN.matcher(routeName);
         return matcher.find();
     }
+
+    public static String removeVariant(String routeName){
+        return routeName.split(" ")[0];
+    }
 }

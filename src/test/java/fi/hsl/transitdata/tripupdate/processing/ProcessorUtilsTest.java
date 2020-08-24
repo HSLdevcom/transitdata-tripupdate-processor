@@ -81,4 +81,14 @@ public class ProcessorUtilsTest {
         assertFalse(ProcessorUtils.isTrainRoute("30002"));
     }
 
+    @Test
+    public void removeVariantWhenNoVariant(){
+        assertEquals("31M1", ProcessorUtils.removeVariant("31M1"));
+    }
+
+    @Test
+    public void removeVariantWhenVariant(){
+        assertEquals("31M1", ProcessorUtils.removeVariant("31M1 5"));
+    }
+
 }
