@@ -2,6 +2,7 @@ package fi.hsl.transitdata.tripupdate.processing;
 
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.PubtransFactory;
+import fi.hsl.common.transitdata.RouteIdUtils;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,9 @@ public abstract class AbstractMessageProcessor {
 
 
     protected boolean validateTripData(String routeName, int direction) {
+        //Normalize route ID before validation
+        routeName = RouteIdUtils.normalizeRouteId(routeName);
+
         if (!ProcessorUtils.validateRouteName(routeName) && !ProcessorUtils.isMetroRoute(routeName)) {
             logger.warn("Invalid route name {}, discarding message", routeName);
             return false;
