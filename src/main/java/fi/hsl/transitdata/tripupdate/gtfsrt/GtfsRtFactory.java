@@ -58,9 +58,15 @@ public class GtfsRtFactory {
             // GTFS-RT treats times in seconds
             long stopEventTimeInSeconds = stopEstimate.getEstimatedTimeUtcMs() / 1000;
 
-            GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                    .setTime(stopEventTimeInSeconds)
-                    .build();
+            GtfsRealtime.TripUpdate.StopTimeEvent.Builder stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                    .setTime(stopEventTimeInSeconds);
+
+            //Whether the event was observed in real world (i.e. not an estimate)
+            final boolean observedTime = stopEstimate.hasObservedTime() && stopEstimate.getObservedTime();
+            if (observedTime) {
+                stopTimeEvent.setUncertainty(0);
+            }
+
             switch (stopEstimate.getType()) {
                 case ARRIVAL:
                     stopTimeUpdateBuilder.setArrival(stopTimeEvent);
