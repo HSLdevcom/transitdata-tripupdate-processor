@@ -47,8 +47,10 @@ public class MessageRouter implements IMessageHandler {
         //Let's use the same instance of TripUpdateProcessor.
         TripUpdateProcessor tripUpdateProcessor = new TripUpdateProcessor(context.getProducer());
 
-        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor));
-        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
+        final boolean filterTrainData = config.getBoolean("validator.filterTrainData");
+
+        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor, filterTrainData));
+        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor, filterTrainData));
     }
 
     private List<ITripUpdateValidator> registerTripUpdateValidators() {

@@ -21,7 +21,7 @@ public class TripCancellationProcessorTest {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(MockDataUtils.generateValidJoreId(),
                 MockDataUtils.generateValidRouteName(),
                 System.currentTimeMillis());
-        TripCancellationProcessor proc = new TripCancellationProcessor(null);
+        TripCancellationProcessor proc = new TripCancellationProcessor(null, true);
 
         assertFalse(proc.validateMessage(arrival.toByteArray()));
     }
@@ -45,7 +45,7 @@ public class TripCancellationProcessorTest {
         LocalDateTime someOperatingTime = Instant.now().plus(Duration.ofHours(5)).atOffset(ZoneOffset.UTC).toLocalDateTime();
         InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, routeName, direction, someOperatingTime);
 
-        TripCancellationProcessor proc = new TripCancellationProcessor(null);
+        TripCancellationProcessor proc = new TripCancellationProcessor(null, true);
 
         assertEquals(shouldPass, proc.validateMessage(cancellation.toByteArray()));
     }

@@ -32,6 +32,12 @@ public abstract class AbstractMessageProcessor {
         }
     }
 
+    private final boolean filterTrainData;
+
+    AbstractMessageProcessor(boolean filterTrainData) {
+        this.filterTrainData = filterTrainData;
+    }
+
     /**
      * Check the data within the payload
      *
@@ -56,7 +62,7 @@ public abstract class AbstractMessageProcessor {
             return false;
         }
 
-        if (ProcessorUtils.isTrainRoute(routeName)) {
+        if (filterTrainData && ProcessorUtils.isTrainRoute(routeName)) {
             logger.info("Route {} is for trains, discarding message", routeName);
             return false;
         }
