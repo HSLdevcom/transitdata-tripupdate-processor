@@ -15,7 +15,8 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
 
     private final TripUpdateProcessor tripUpdateProcessor;
 
-    public TripCancellationProcessor(TripUpdateProcessor tripUpdateProcessor) {
+    public TripCancellationProcessor(TripUpdateProcessor tripUpdateProcessor, boolean filterTrainData) {
+        super(filterTrainData);
         this.tripUpdateProcessor = tripUpdateProcessor;
     }
 

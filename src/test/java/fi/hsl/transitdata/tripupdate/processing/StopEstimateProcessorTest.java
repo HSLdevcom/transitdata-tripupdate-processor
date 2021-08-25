@@ -16,7 +16,7 @@ public class StopEstimateProcessorTest {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(MockDataUtils.generateValidJoreId(),
                 MockDataUtils.generateValidRouteName(),
                 System.currentTimeMillis());
-        StopEstimateProcessor proc = new StopEstimateProcessor(null);
+        StopEstimateProcessor proc = new StopEstimateProcessor(null, true);
 
         assertFalse(proc.validateMessage(arrival.toByteArray()));
     }
@@ -40,7 +40,7 @@ public class StopEstimateProcessorTest {
         PubtransTableProtos.DOITripInfo mockTripInfo = MockDataUtils.mockDOITripInfo(dvjId, routeName, direction);
         InternalMessages.StopEstimate estimate = PubtransFactory.createStopEstimate(common, mockTripInfo, eventType);
 
-        StopEstimateProcessor proc = new StopEstimateProcessor(null);
+        StopEstimateProcessor proc = new StopEstimateProcessor(null, true);
 
         assertEquals(shouldPass, proc.validateMessage(estimate.toByteArray()));
     }
