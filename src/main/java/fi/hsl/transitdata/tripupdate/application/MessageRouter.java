@@ -35,6 +35,8 @@ public class MessageRouter implements IMessageHandler {
     private Producer<byte[]> producer;
     private Config config;
 
+    private MessageStats messageStats = new MessageStats();
+
     public MessageRouter(PulsarApplicationContext context) {
         consumer = context.getConsumer();
         producer = context.getProducer();
@@ -65,7 +67,9 @@ public class MessageRouter implements IMessageHandler {
 
     }
 
-    public void handleMessage(Message received) throws Exception {
+    public void handleMessage(Message received) {
+        messageStats.incrementMessagesReceived();
+
         try {
             Optional<TransitdataSchema> maybeSchema = TransitdataSchema.parseFromPulsarMessage(received);
             maybeSchema.ifPresent(schema -> {
@@ -86,6 +90,8 @@ public class MessageRouter implements IMessageHandler {
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
                                 sendTripUpdate(pair, eventTimeMs);
+                            } else {
+                                messageStats.incrementInvalidTripUpdates();
                             }
                         }
                         else {
@@ -107,13 +113,18 @@ public class MessageRouter implements IMessageHandler {
                         return null;
                     })
                     .thenRun(() -> {});
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Exception while handling message", e);
+        }
+
+        if (messageStats.getDurationSecs() >= 60) {
+            messageStats.logAndReset(log);
         }
     }
 
     private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+        messageStats.incrementMessagesSent();
+
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
 
