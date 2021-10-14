@@ -93,16 +93,13 @@ public class MessageRouter implements IMessageHandler {
                             } else {
                                 messageStats.incrementInvalidTripUpdates();
                             }
-                        }
-                        else {
+                        } else {
                             log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
                         }
+                    } else {
+                        log.debug("Message didn't pass validation, ignoring.");
                     }
-                    else {
-                        log.info("Message didn't pass validation, ignoring.");
-                    }
-                }
-                else {
+                } else {
                     log.warn("Received message with unknown schema, ignoring: " + schema);
                 }
             });
