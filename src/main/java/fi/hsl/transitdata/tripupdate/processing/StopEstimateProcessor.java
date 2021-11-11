@@ -14,7 +14,8 @@ public class StopEstimateProcessor extends AbstractMessageProcessor {
 
     final TripUpdateProcessor tripProcessor;
 
-    public StopEstimateProcessor(TripUpdateProcessor tripProcessor) {
+    public StopEstimateProcessor(TripUpdateProcessor tripProcessor, boolean filterTrainData) {
+        super(filterTrainData);
         this.tripProcessor = tripProcessor;
     }
 

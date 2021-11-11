@@ -35,6 +35,8 @@ public class MessageRouter implements IMessageHandler {
     private Producer<byte[]> producer;
     private Config config;
 
+    private MessageStats messageStats = new MessageStats();
+
     public MessageRouter(PulsarApplicationContext context) {
         consumer = context.getConsumer();
         producer = context.getProducer();
@@ -47,8 +49,10 @@ public class MessageRouter implements IMessageHandler {
         //Let's use the same instance of TripUpdateProcessor.
         TripUpdateProcessor tripUpdateProcessor = new TripUpdateProcessor(context.getProducer());
 
-        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor));
-        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor));
+        final boolean filterTrainData = config.getBoolean("validator.filterTrainData");
+
+        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor, filterTrainData));
+        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor, filterTrainData));
     }
 
     private List<ITripUpdateValidator> registerTripUpdateValidators() {
@@ -63,7 +67,9 @@ public class MessageRouter implements IMessageHandler {
 
     }
 
-    public void handleMessage(Message received) throws Exception {
+    public void handleMessage(Message received) {
+        messageStats.incrementMessagesReceived();
+
         try {
             Optional<TransitdataSchema> maybeSchema = TransitdataSchema.parseFromPulsarMessage(received);
             maybeSchema.ifPresent(schema -> {
@@ -84,17 +90,16 @@ public class MessageRouter implements IMessageHandler {
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
                                 sendTripUpdate(pair, eventTimeMs);
+                            } else {
+                                messageStats.incrementInvalidTripUpdates();
                             }
-                        }
-                        else {
+                        } else {
                             log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
                         }
+                    } else {
+                        log.debug("Message didn't pass validation, ignoring.");
                     }
-                    else {
-                        log.info("Message didn't pass validation, ignoring.");
-                    }
-                }
-                else {
+                } else {
                     log.warn("Received message with unknown schema, ignoring: " + schema);
                 }
             });
@@ -105,13 +110,18 @@ public class MessageRouter implements IMessageHandler {
                         return null;
                     })
                     .thenRun(() -> {});
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Exception while handling message", e);
+        }
+
+        if (messageStats.getDurationSecs() >= 60) {
+            messageStats.logAndReset(log);
         }
     }
 
     private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+        messageStats.incrementMessagesSent();
+
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
 
