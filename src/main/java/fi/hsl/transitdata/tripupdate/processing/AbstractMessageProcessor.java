@@ -63,7 +63,7 @@ public abstract class AbstractMessageProcessor {
         }
 
         if (filterTrainData && ProcessorUtils.isTrainRoute(routeName)) {
-            logger.info("Route {} is for trains, discarding message", routeName);
+            logger.debug("Route {} is for trains, discarding message", routeName);
             return false;
         }
 
