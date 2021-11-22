@@ -26,12 +26,9 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(payload);
 
-            final boolean entireDepartureCancelled =
-                    tripCancellation.getAffectedDeparturesType() == InternalMessages.TripCancellation.AffectedDeparturesType.CANCEL_ENTIRE_DEPARTURE &&
-                    tripCancellation.getDeviationCasesType() == InternalMessages.TripCancellation.DeviationCasesType.CANCEL_DEPARTURE;
-            if (!entireDepartureCancelled) {
+            if (tripCancellation.getAffectedDeparturesType() != InternalMessages.TripCancellation.AffectedDeparturesType.CANCEL_ENTIRE_DEPARTURE ||
+                tripCancellation.getDeviationCasesType() != InternalMessages.TripCancellation.DeviationCasesType.CANCEL_DEPARTURE) {
                 //Produce cancellation messages only for full cancellations and not partial cancellations
-                log.info("{} (dir: {}) at {} {} was not fully cancelled, ignoring cancellation message..", tripCancellation.getRouteId(), tripCancellation.getDirectionId(), tripCancellation.getStartDate(), tripCancellation.getStartTime());
                 return false;
             }
 
