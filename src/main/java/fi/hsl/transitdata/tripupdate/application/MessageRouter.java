@@ -10,6 +10,7 @@ import fi.hsl.common.transitdata.TransitdataProperties.*;
 import fi.hsl.common.transitdata.TransitdataSchema;
 import fi.hsl.transitdata.tripupdate.processing.AbstractMessageProcessor;
 import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
+import fi.hsl.transitdata.tripupdate.utils.Debouncer;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
@@ -24,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
 public class MessageRouter implements IMessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
 
@@ -37,10 +37,15 @@ public class MessageRouter implements IMessageHandler {
 
     private MessageStats messageStats = new MessageStats();
 
+    private Debouncer debouncer;
+
     public MessageRouter(PulsarApplicationContext context) {
         consumer = context.getConsumer();
         producer = context.getProducer();
         this.config = context.getConfig();
+
+        debouncer = new Debouncer(config.getDuration("publisher.debounceDelay"));
+
         tripUpdateValidators = registerTripUpdateValidators();
         registerHandlers(context);
     }
@@ -125,15 +130,16 @@ public class MessageRouter implements IMessageHandler {
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
 
-        GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
-        producer.newMessage()
-                .key(tripId)
-                .eventTime(pulsarEventTimestamp)
-                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
-                .value(feedMessage.toByteArray())
-                .sendAsync()
-                .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
-                        tripId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
-
+        debouncer.debounce(tripId, () -> {
+            GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
+            producer.newMessage()
+                    .key(tripId)
+                    .eventTime(pulsarEventTimestamp)
+                    .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
+                    .value(feedMessage.toByteArray())
+                    .sendAsync()
+                    .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
+                            tripId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+        });
     }
 }
