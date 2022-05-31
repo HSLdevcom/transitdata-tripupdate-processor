@@ -12,6 +12,7 @@ import fi.hsl.transitdata.tripupdate.processing.AbstractMessageProcessor;
 import fi.hsl.transitdata.tripupdate.processing.StopEstimateProcessor;
 import fi.hsl.transitdata.tripupdate.utils.Debouncer;
 import fi.hsl.transitdata.tripupdate.validators.ITripUpdateValidator;
+import fi.hsl.transitdata.tripupdate.validators.MissingEstimatesValidator;
 import fi.hsl.transitdata.tripupdate.validators.PrematureDeparturesValidator;
 import fi.hsl.transitdata.tripupdate.validators.TripUpdateMaxAgeValidator;
 import fi.hsl.transitdata.tripupdate.processing.TripCancellationProcessor;
@@ -67,6 +68,7 @@ public class MessageRouter implements IMessageHandler {
         tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("validator.tripUpdateMaxAge", TimeUnit.SECONDS)));
         tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("validator.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS),
                 config.getString("validator.timezone")));
+        tripUpdateValidators.add(new MissingEstimatesValidator(config.getInt("validator.tripUpdateMaxMissingEstimates")));
 
         return tripUpdateValidators;
 
@@ -86,11 +88,15 @@ public class MessageRouter implements IMessageHandler {
                         if (maybeTripUpdate.isPresent()) {
                             final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
                             final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
-                            boolean tripUpdateIsValid = true;
 
-                            for (ITripUpdateValidator validator : tripUpdateValidators) {
-                                tripUpdateIsValid = tripUpdateIsValid && validator.validate(tripUpdate);
-                            }
+                            final boolean tripUpdateIsValid = tripUpdateValidators.stream().allMatch(validator -> {
+                                final boolean isValid = validator.validate(tripUpdate);
+                                if (!isValid) {
+                                    final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
+                                    log.warn("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+                                }
+                                return isValid;
+                            });
 
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
