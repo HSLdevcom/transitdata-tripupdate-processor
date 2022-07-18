@@ -31,7 +31,7 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
                     tripCancellation.getDeviationCasesType() == InternalMessages.TripCancellation.DeviationCasesType.CANCEL_DEPARTURE;
             if (!entireDepartureCancelled) {
                 //Produce cancellation messages only for full cancellations and not partial cancellations
-                log.info("{} (dir: {}) at {} {} was not fully cancelled, ignoring cancellation message..", tripCancellation.getRouteId(), tripCancellation.getDirectionId(), tripCancellation.getStartDate(), tripCancellation.getStartTime());
+                log.debug("{} (dir: {}) at {} {} was not fully cancelled, ignoring cancellation message..", tripCancellation.getRouteId(), tripCancellation.getDirectionId(), tripCancellation.getStartDate(), tripCancellation.getStartTime());
                 return false;
             }
 
