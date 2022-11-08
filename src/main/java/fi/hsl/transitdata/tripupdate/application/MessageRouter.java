@@ -93,7 +93,9 @@ public class MessageRouter implements IMessageHandler {
                                 final boolean isValid = validator.validate(tripUpdate);
                                 if (!isValid) {
                                     final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
-                                    log.warn("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+                                    log.debug("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+
+                                    messageStats.incrementInvalidTripUpdates("validator-" + validator.getClass().getSimpleName());
                                 }
                                 return isValid;
                             });
@@ -101,17 +103,18 @@ public class MessageRouter implements IMessageHandler {
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
                                 sendTripUpdate(pair, eventTimeMs);
-                            } else {
-                                messageStats.incrementInvalidTripUpdates();
                             }
                         } else {
                             log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
+                            messageStats.incrementInvalidTripUpdates("processing_failed-" + schema.schema);
                         }
                     } else {
                         log.debug("Message didn't pass validation, ignoring.");
+                        messageStats.incrementInvalidTripUpdates("message_validator");
                     }
                 } else {
                     log.warn("Received message with unknown schema, ignoring: " + schema);
+                    messageStats.incrementInvalidTripUpdates("unknown_schema-" + schema);
                 }
             });
 
