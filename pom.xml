@@ -17,7 +17,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <common.version>1.4.3</common.version>
-        <testcontainers.version>1.9.0</testcontainers.version>
+        <testcontainers.version>1.17.5</testcontainers.version>
     </properties>
     <profiles>
         <!-- The Configuration of the unit-test profile -->
