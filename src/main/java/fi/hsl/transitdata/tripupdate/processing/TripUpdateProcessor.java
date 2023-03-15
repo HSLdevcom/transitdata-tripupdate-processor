@@ -17,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 import static com.google.transit.realtime.GtfsRealtime.*;
 
@@ -25,8 +26,6 @@ public class TripUpdateProcessor {
 
     private static final Duration CACHE_DURATION = Duration.of(4, ChronoUnit.HOURS);
 
-    private Producer<byte[]> producer;
-
     //for each trip (identified by tripId-String) store one estimate/event (StopTimeUpdate) for each stop (identified by stopSequence-Integer)
     private final LoadingCache<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>> stopTimeUpdateCache;
     //for each trip (identified by tripId-String) store the full TripUpdate containing all StopTimeUpdates
@@ -34,16 +33,18 @@ public class TripUpdateProcessor {
     //for each trip (identified by tripId-String), keep track of whether the trip is included in static schedule (so that correct schedule relationship can be restored in case of cancellation-of-cancellation)
     private final Cache<String, TripDescriptor.ScheduleRelationship> scheduleRelationshipCache;
 
-    public TripUpdateProcessor(Producer<byte[]> producer) {
-        this.producer = producer;
+    //Keep track of cancellations produced to for the trip
+    //There can be multiple cancellations for each trip, so we need to find the latest
+    private final Cache<String, Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>>> cancellationsCache;
 
+    public TripUpdateProcessor(Producer<byte[]> producer) {
         this.tripUpdateCache = CacheBuilder.newBuilder()
                 .expireAfterAccess(CACHE_DURATION)
                 .build();
 
         this.stopTimeUpdateCache = CacheBuilder.newBuilder()
                 .expireAfterAccess(CACHE_DURATION)
-                .build(new CacheLoader<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>>() {
+                .build(new CacheLoader<>() {
                     @Override
                     public Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> load(String key) {
                         //TreeMap keeps its entries sorted according to the natural ordering of its keys.
@@ -54,6 +55,15 @@ public class TripUpdateProcessor {
         this.scheduleRelationshipCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(CACHE_DURATION)
                 .build();
+
+        this.cancellationsCache = CacheBuilder.newBuilder()
+                .expireAfterAccess(CACHE_DURATION)
+                .build(new CacheLoader<>() {
+                    @Override
+                    public Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> load(String key) {
+                        return new HashMap<>();
+                    }
+                });
     }
 
     public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
@@ -129,7 +139,6 @@ public class TripUpdateProcessor {
     }
 
     private TripUpdate updateTripUpdateCacheWithStopTimes(final InternalMessages.StopEstimate latest, Collection<StopTimeUpdate> stopTimeUpdates) {
-
         final String tuCacheKey = cacheKey(latest);
 
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(tuCacheKey);
@@ -152,16 +161,29 @@ public class TripUpdateProcessor {
     private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
                                                              final long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {
+        cancellationsCache.getIfPresent(cacheKey).compute(cancellation.getDeviationCaseId(), (deviationCaseId, tripCancellations) -> {
+            if (tripCancellations == null) {
+                tripCancellations = new HashMap<>();
+            }
+
+            tripCancellations.put(cancellation.getStatus(), cancellation);
+
+            return tripCancellations;
+        });
+        final Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> cancellations = cancellationsCache.getIfPresent(cacheKey);
+
+        final boolean isCancelled = cancellations.values().stream().anyMatch(cancellationsForDeviationCase -> {
+            final Set<InternalMessages.TripCancellation.Status> statuses = cancellationsForDeviationCase.keySet();
+            return statuses.stream().filter(status -> status == InternalMessages.TripCancellation.Status.CANCELED).count() > statuses.stream().filter(status -> status != InternalMessages.TripCancellation.Status.CANCELED).count();
+        });
+
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(cacheKey);
         if (previousTripUpdate == null) {
             previousTripUpdate = GtfsRtFactory.newTripUpdate(cancellation, messageTimestampMs);
         }
 
-        final GtfsRealtime.TripDescriptor.ScheduleRelationship status =
-                cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ?
-                    GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED :
-                        //Assume that trip is scheduled if it is not found from the cache
-                        Optional.ofNullable(scheduleRelationshipCache.getIfPresent(cacheKey)).orElse(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        //Assume that trip is scheduled if its schedule relationship is not found from the cache
+        final GtfsRealtime.TripDescriptor.ScheduleRelationship status = isCancelled ? GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED : Optional.ofNullable(scheduleRelationshipCache.getIfPresent(cacheKey)).orElse(TripDescriptor.ScheduleRelationship.SCHEDULED);
 
         TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
                 .setScheduleRelationship(status)
