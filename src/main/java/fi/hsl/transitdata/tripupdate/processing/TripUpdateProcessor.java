@@ -1,9 +1,9 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
@@ -27,42 +27,34 @@ public class TripUpdateProcessor {
     private static final Duration CACHE_DURATION = Duration.of(4, ChronoUnit.HOURS);
 
     //for each trip (identified by tripId-String) store one estimate/event (StopTimeUpdate) for each stop (identified by stopSequence-Integer)
-    private final LoadingCache<String, Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate>> stopTimeUpdateCache;
+    private final LoadingCache<String, Map<Integer, StopTimeUpdate>> stopTimeUpdateCache;
     //for each trip (identified by tripId-String) store the full TripUpdate containing all StopTimeUpdates
-    private final Cache<String, GtfsRealtime.TripUpdate> tripUpdateCache;
+    private final Cache<String, TripUpdate> tripUpdateCache;
     //for each trip (identified by tripId-String), keep track of whether the trip is included in static schedule (so that correct schedule relationship can be restored in case of cancellation-of-cancellation)
     private final Cache<String, TripDescriptor.ScheduleRelationship> scheduleRelationshipCache;
 
-    //There can be multiple cancellations for each trip. We need to keep track of them to find out whether there is an active cancellation 
+    //There can be multiple cancellations for each trip. We need to keep track of them to find out whether there is an active cancellation
     private final Cache<String, Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>>> cancellationsCache;
 
     public TripUpdateProcessor(Producer<byte[]> producer) {
-        this.tripUpdateCache = CacheBuilder.newBuilder()
+        this.tripUpdateCache = Caffeine.newBuilder()
                 .expireAfterAccess(CACHE_DURATION)
                 .build();
 
-        this.stopTimeUpdateCache = CacheBuilder.newBuilder()
+        this.stopTimeUpdateCache = Caffeine.newBuilder()
                 .expireAfterAccess(CACHE_DURATION)
-                .build(new CacheLoader<>() {
-                    @Override
-                    public Map<Integer, GtfsRealtime.TripUpdate.StopTimeUpdate> load(String key) {
-                        //TreeMap keeps its entries sorted according to the natural ordering of its keys.
-                        return new TreeMap<>();
-                    }
+                .build(key -> {
+                    //TreeMap keeps its entries sorted according to the natural ordering of its keys.
+                    return new TreeMap<>();
                 });
 
-        this.scheduleRelationshipCache = CacheBuilder.newBuilder()
+        this.scheduleRelationshipCache = Caffeine.newBuilder()
                 .expireAfterWrite(CACHE_DURATION)
                 .build();
 
-        this.cancellationsCache = CacheBuilder.newBuilder()
+        this.cancellationsCache = Caffeine.newBuilder()
                 .expireAfterAccess(CACHE_DURATION)
-                .build(new CacheLoader<>() {
-                    @Override
-                    public Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> load(String key) {
-                        return new HashMap<>();
-                    }
-                });
+                .build(key -> new HashMap<>());
     }
 
     public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
@@ -122,13 +114,7 @@ public class TripUpdateProcessor {
     }
 
     Map<Integer, StopTimeUpdate> getStopTimeUpdatesWithStopSequences(String key) {
-        try {
-            return stopTimeUpdateCache.get(key);
-        }
-        catch (ExecutionException e) {
-            log.error("Unexpected Error with StopTimeUpdate (Guava) Cache! ", e);
-        }
-        return new HashMap<>();
+        return stopTimeUpdateCache.get(key);
     }
 
     LinkedList<StopTimeUpdate> getStopTimeUpdates(String key) {
@@ -160,7 +146,7 @@ public class TripUpdateProcessor {
     private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
                                                              final long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {
-        cancellationsCache.getIfPresent(cacheKey).compute(cancellation.getDeviationCaseId(), (deviationCaseId, tripCancellations) -> {
+        cancellationsCache.get(cacheKey, k -> new HashMap<>()).compute(cancellation.getDeviationCaseId(), (deviationCaseId, tripCancellations) -> {
             if (tripCancellations == null) {
                 tripCancellations = new HashMap<>();
             }
