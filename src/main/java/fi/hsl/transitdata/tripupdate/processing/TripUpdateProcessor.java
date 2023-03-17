@@ -33,8 +33,7 @@ public class TripUpdateProcessor {
     //for each trip (identified by tripId-String), keep track of whether the trip is included in static schedule (so that correct schedule relationship can be restored in case of cancellation-of-cancellation)
     private final Cache<String, TripDescriptor.ScheduleRelationship> scheduleRelationshipCache;
 
-    //Keep track of cancellations produced to for the trip
-    //There can be multiple cancellations for each trip, so we need to find the latest
+    //There can be multiple cancellations for each trip. We need to keep track of them to find out whether there is an active cancellation 
     private final Cache<String, Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>>> cancellationsCache;
 
     public TripUpdateProcessor(Producer<byte[]> producer) {
