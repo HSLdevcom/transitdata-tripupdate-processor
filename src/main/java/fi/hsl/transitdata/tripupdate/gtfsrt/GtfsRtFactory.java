@@ -115,7 +115,7 @@ public class GtfsRtFactory {
                 return GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED;
             case SCHEDULED:
             default:
-                return GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
+                return GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED;
         }
     }
 
