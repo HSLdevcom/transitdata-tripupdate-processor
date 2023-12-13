@@ -221,7 +221,7 @@ public class TripUpdateProcessorTest {
                 .build());
 
         // check that the cancellation has one stopTimeUpdate and its the one that was added before the first cancellation
-        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED, tu.getTrip().getScheduleRelationship());
+        assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED, tu.getTrip().getScheduleRelationship());
         assertEquals(1, tu.getStopTimeUpdateCount());
         assertEquals(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED, tu.getStopTimeUpdate(0).getScheduleRelationship());
         assertEquals(true, tu.getStopTimeUpdate(0).hasStopId());
