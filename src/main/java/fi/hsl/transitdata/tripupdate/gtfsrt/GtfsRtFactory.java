@@ -87,18 +87,16 @@ public class GtfsRtFactory {
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
         final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
         String routeId = RouteIdUtils.normalizeRouteId(estimate.getTripInfo().getRouteId());
-        
-        GtfsRealtime.TripDescriptor.ScheduleRelationship scheduleType = mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType());
-        
+
         GtfsRealtime.TripDescriptor.Builder tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId(routeId)
                 .setDirectionId(direction)
                 .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
-                .setScheduleRelationship(scheduleType);
-        
+                .setScheduleRelationship(mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType()));
+
         //Trips outside of static schedule need trip ID to be accepted by OTP
-        if (scheduleType != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
+        if (estimate.getTripInfo().getScheduleType() != InternalMessages.TripInfo.ScheduleType.SCHEDULED) {
             tripDescriptor.setTripId(generateTripId(estimate.getTripInfo()));
         }
 
