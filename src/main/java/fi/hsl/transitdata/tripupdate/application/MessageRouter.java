@@ -91,7 +91,7 @@ public class MessageRouter implements IMessageHandler {
                             
                             if (tripUpdate.getTrip().getScheduleRelationship() != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED &&
                                     (tripUpdate.getTrip().getRouteId().startsWith("106") || tripUpdate.getTrip().getRouteId().startsWith("107"))) {
-                                log.info("NEW TRIP UPDATE: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
+                                log.info("NEW TRIP UPDATE: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getTripId() + " " + tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
                             }
 
                             final boolean tripUpdateIsValid = tripUpdateValidators.stream().allMatch(validator -> {
@@ -147,7 +147,7 @@ public class MessageRouter implements IMessageHandler {
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
         
         if (tripUpdate.getTrip().getRouteId().startsWith("106") || tripUpdate.getTrip().getRouteId().startsWith("107")) {
-            log.info("SENDING: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
+            log.info("SENDING: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getTripId() + " " +  tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
         }
 
         debouncer.debounce(tripId, () -> {
