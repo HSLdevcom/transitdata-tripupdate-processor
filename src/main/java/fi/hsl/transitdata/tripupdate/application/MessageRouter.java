@@ -98,7 +98,9 @@ public class MessageRouter implements IMessageHandler {
                                 final boolean isValid = validator.validate(tripUpdate);
                                 if (!isValid) {
                                     final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
-                                    log.info("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+                                    if (trip.getRouteId().startsWith("106") || trip.getRouteId().startsWith("107")) {
+                                        log.info("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+                                    }
 
                                     messageStats.incrementInvalidTripUpdates("validator-" + validator.getClass().getSimpleName());
                                 }
