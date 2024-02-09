@@ -25,6 +25,10 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
 
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(payload);
+            
+            if (tripCancellation.getTripId().startsWith("106") || tripCancellation.getTripId().startsWith("107")) {
+                log.info("VALIDATING " + tripCancellation.getTripId() + " " + tripCancellation.getRouteId() + " " + tripCancellation.getDirectionId() + " " + tripCancellation.getStartDate() + " " + tripCancellation.getStartTime() + " " + tripCancellation.getStatus());
+            }
 
             final boolean entireDepartureCancelled =
                     tripCancellation.getAffectedDeparturesType() == InternalMessages.TripCancellation.AffectedDeparturesType.CANCEL_ENTIRE_DEPARTURE &&
