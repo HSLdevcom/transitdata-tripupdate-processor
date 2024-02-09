@@ -146,7 +146,7 @@ public class MessageRouter implements IMessageHandler {
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
         
-        if (tripUpdate.getTrip().getTripId().startsWith("106") || tripUpdate.getTrip().getTripId().startsWith("107")) {
+        if (tripUpdate.getTrip().getRouteId().startsWith("106") || tripUpdate.getTrip().getRouteId().startsWith("107")) {
             log.info("SENDING: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
         }
 
