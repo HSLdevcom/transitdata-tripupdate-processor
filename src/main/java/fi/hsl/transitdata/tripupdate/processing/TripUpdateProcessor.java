@@ -1,7 +1,6 @@
 package fi.hsl.transitdata.tripupdate.processing;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.transit.realtime.GtfsRealtime;
@@ -15,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
@@ -156,11 +154,15 @@ public class TripUpdateProcessor {
             return tripCancellations;
         });
         final Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> cancellations = cancellationsCache.getIfPresent(cacheKey);
-
-        final boolean isCancelled = cancellations.values().stream().anyMatch(cancellationsForDeviationCase -> {
-            final Set<InternalMessages.TripCancellation.Status> statuses = cancellationsForDeviationCase.keySet();
-            return statuses.stream().filter(status -> status == InternalMessages.TripCancellation.Status.CANCELED).count() > statuses.stream().filter(status -> status != InternalMessages.TripCancellation.Status.CANCELED).count();
-        });
+        
+        boolean isCancelled = cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ? true : false;
+        
+        if (cancellation.getDeviationCaseId() > 0) {
+            isCancelled = cancellations.values().stream().anyMatch(cancellationsForDeviationCase -> {
+                final Set<InternalMessages.TripCancellation.Status> statuses = cancellationsForDeviationCase.keySet();
+                return statuses.stream().filter(status -> status == InternalMessages.TripCancellation.Status.CANCELED).count() > statuses.stream().filter(status -> status != InternalMessages.TripCancellation.Status.CANCELED).count();
+            });
+        }
 
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(cacheKey);
         if (previousTripUpdate == null) {
