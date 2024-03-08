@@ -130,7 +130,7 @@ public class GtfsRtFactory {
                     .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
                     .setStopTimeProperties(stopTimeProperties);
             
-            tripUpdateBuilder = tripUpdateBuilder.setStopTimeUpdate(0, stopTimeUpdate);
+            tripUpdateBuilder = tripUpdateBuilder.addStopTimeUpdate(stopTimeUpdate);
         }
         
         return tripUpdateBuilder.build();
