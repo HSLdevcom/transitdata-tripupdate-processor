@@ -108,7 +108,7 @@ public class GtfsRtFactory {
                 .setTimestamp(lastModified(estimate));
         
         if (StringUtils.isNotBlank(estimate.getTargetedStopId())
-                && estimate.getTargetedStopId().equals(estimate.getStopId())) {
+                && !estimate.getTargetedStopId().equals(estimate.getStopId())) {
             log.info("Targeted stopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, OperationDay={}, StartTime={}",
                     estimate.getStopId(), estimate.getTargetedStopId(), estimate.getTripInfo().getRouteId(),
                     estimate.getTripInfo().getDirectionId(), estimate.getTripInfo().getOperatingDay(),
