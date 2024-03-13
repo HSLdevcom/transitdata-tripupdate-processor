@@ -88,20 +88,22 @@ public class MessageRouter implements IMessageHandler {
                         if (maybeTripUpdate.isPresent()) {
                             final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
                             final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
-                            
+                            /*
                             if (tripUpdate.getTrip().getScheduleRelationship() != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED &&
-                                    (tripUpdate.getTrip().getRouteId().startsWith("1030"))) {
+                                    (tripUpdate.getTrip().getRouteId().startsWith("106") || tripUpdate.getTrip().getRouteId().startsWith("107"))) {
                                 log.info("NEW TRIP UPDATE: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripUpdate.getTrip().getTripId() + " " + tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
                             }
+                             */
 
                             final boolean tripUpdateIsValid = tripUpdateValidators.stream().allMatch(validator -> {
                                 final boolean isValid = validator.validate(tripUpdate);
                                 if (!isValid) {
                                     final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
-                                    
-                                    if (trip.getRouteId().startsWith("1030")) {
+                                    /*
+                                    if (trip.getRouteId().startsWith("106") || trip.getRouteId().startsWith("107")) {
                                         log.info("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
                                     }
+                                     */
 
                                     messageStats.incrementInvalidTripUpdates("validator-" + validator.getClass().getSimpleName());
                                 }
@@ -146,11 +148,11 @@ public class MessageRouter implements IMessageHandler {
 
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
-        
-        if (tripUpdate.getTrip().getRouteId().startsWith("1030")) {
+        /*
+        if (tripUpdate.getTrip().getRouteId().startsWith("106") || tripUpdate.getTrip().getRouteId().startsWith("107")) {
             log.info("SENDING: " + tripUpdate.getTrip().getScheduleRelationship() + " " + tripId + " " +  tripUpdate.getTrip().getRouteId() + " " + tripUpdate.getTrip().getDirectionId() + " " +  tripUpdate.getTrip().getStartDate() + " " + tripUpdate.getTrip().getStartTime());
         }
-        
+         */
         debouncer.debounce(tripId, () -> {
             GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
             producer.newMessage()
