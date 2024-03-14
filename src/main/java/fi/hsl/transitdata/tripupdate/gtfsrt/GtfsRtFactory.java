@@ -4,7 +4,6 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.RouteIdUtils;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import org.apache.pulsar.shade.org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,33 +105,7 @@ public class GtfsRtFactory {
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(tripDescriptor)
                 .setTimestamp(lastModified(estimate));
-        
-        if (StringUtils.isNotBlank(estimate.getTargetedStopId())
-                && !estimate.getTargetedStopId().equals(estimate.getStopId())) {
-            log.info("Targeted stopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, OperationDay={}, StartTime={}",
-                    estimate.getStopId(), estimate.getTargetedStopId(), estimate.getTripInfo().getRouteId(),
-                    estimate.getTripInfo().getDirectionId(), estimate.getTripInfo().getOperatingDay(),
-                    estimate.getTripInfo().getStartTime());
-            
-            GtfsRealtime.TripUpdate.StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                    .setDelay(0)
-                    .setTime(estimate.getEstimatedTimeUtcMs())
-                    .setUncertainty(0)
-                    .build();
-            
-            GtfsRealtime.TripUpdate.StopTimeProperties stopTimeProperties = GtfsRealtime.TripUpdate.StopTimeProperties.newBuilder()
-                    .setAssignedStopId(estimate.getTargetedStopId())
-                    .build();
-            
-            GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopSequence(estimate.getStopSequence())
-                    .setDeparture(stopTimeEvent)
-                    .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
-                    .setStopTimeProperties(stopTimeProperties);
-            
-            tripUpdateBuilder = tripUpdateBuilder.addStopTimeUpdate(stopTimeUpdate);
-        }
-        
+
         return tripUpdateBuilder.build();
     }
 

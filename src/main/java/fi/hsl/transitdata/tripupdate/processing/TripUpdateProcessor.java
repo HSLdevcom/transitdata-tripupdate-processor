@@ -8,6 +8,7 @@ import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtFactory;
 import fi.hsl.transitdata.tripupdate.gtfsrt.GtfsRtValidator;
 import org.apache.pulsar.client.api.*;
+import org.apache.pulsar.shade.org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,12 +136,42 @@ public class TripUpdateProcessor {
                 .addAllStopTimeUpdate(stopTimeUpdates)
                 .setTimestamp(timestamp)
                 .build();
-
+        
+        if (StringUtils.isNotBlank(latest.getTargetedStopId())
+                && !latest.getTargetedStopId().equals(latest.getStopId())) {
+            tripUpdate = processTargetedStopIds(tripUpdate, latest);
+        }
+        
         tripUpdateCache.put(tuCacheKey, tripUpdate);
 
         return tripUpdate;
     }
-
+    
+    private TripUpdate processTargetedStopIds(TripUpdate tripUpdate, InternalMessages.StopEstimate stopEstimate) {
+        log.info("TargetedStopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, OperationDay={}, StartTime={}",
+                stopEstimate.getStopId(), stopEstimate.getTargetedStopId(), stopEstimate.getTripInfo().getRouteId(),
+                stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getTripInfo().getOperatingDay(),
+                stopEstimate.getTripInfo().getStartTime());
+        
+        StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setDelay(0)
+                .setTime(stopEstimate.getEstimatedTimeUtcMs())
+                .setUncertainty(0)
+                .build();
+        
+        StopTimeProperties stopTimeProperties = GtfsRealtime.TripUpdate.StopTimeProperties.newBuilder()
+                .setAssignedStopId(stopEstimate.getTargetedStopId())
+                .build();
+        
+        StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                .setStopSequence(stopEstimate.getStopSequence())
+                .setDeparture(stopTimeEvent)
+                .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
+                .setStopTimeProperties(stopTimeProperties);
+        
+        return tripUpdate.toBuilder().addStopTimeUpdate(stopTimeUpdate).build();
+    }
+    
     private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
                                                              final long messageTimestampMs,
                                                              InternalMessages.TripCancellation cancellation) {

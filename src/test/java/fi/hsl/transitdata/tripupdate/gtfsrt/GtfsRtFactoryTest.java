@@ -52,18 +52,6 @@ public class GtfsRtFactoryTest {
 
         assertEquals("1010HK", tripUpdate.getTrip().getRouteId());
     }
-    
-    @Test
-    public void newTripUpdateFromStopEventWithTargetedStopId() throws Exception {
-        
-        InternalMessages.StopEstimate stopEstimate = MockDataUtils.mockStopEstimate("2015",
-                InternalMessages.StopEstimate.Type.DEPARTURE, 1457401, 1457402, 17, 1);
-        GtfsRealtime.TripUpdate tripUpdate = GtfsRtFactory.newTripUpdate(stopEstimate);
-        
-        assertEquals("2015", tripUpdate.getTrip().getRouteId());
-        assertEquals("1457402", tripUpdate.getStopTimeUpdate(0).getStopTimeProperties().getAssignedStopId());
-        assertEquals(17, tripUpdate.getStopTimeUpdate(0).getStopSequence());
-    }
 
     @Test
     public void newTripUpdateFromTripCancellationWithLetterAndNumberIsRenamedProperly() throws Exception {
