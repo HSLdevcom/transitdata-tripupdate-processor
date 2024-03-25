@@ -178,7 +178,7 @@ public class TripUpdateProcessor {
         
         int stopTimeUpdateToBeRemovedIndex = getStopTimeUpdateToBeRemovedIndex(tripUpdate, stopEstimate.getStopId());
         log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}",
-                stopTimeUpdate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId());
+                stopEstimate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId());
         
         return tripUpdate.toBuilder()
                 .removeStopTimeUpdate(stopTimeUpdateToBeRemovedIndex)
