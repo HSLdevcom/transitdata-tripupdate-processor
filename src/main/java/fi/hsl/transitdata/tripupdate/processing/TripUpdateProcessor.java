@@ -165,9 +165,16 @@ public class TripUpdateProcessor {
         
         StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
                 .setStopSequence(stopEstimate.getStopSequence())
-                .setDeparture(stopTimeEvent)
                 .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
                 .setStopTimeProperties(stopTimeProperties);
+        
+        if (stopEstimate.getType() == InternalMessages.StopEstimate.Type.ARRIVAL) {
+            stopTimeUpdate = stopTimeUpdate.setArrival(stopTimeEvent);
+        } else if (stopEstimate.getType() == InternalMessages.StopEstimate.Type.DEPARTURE) {
+            stopTimeUpdate = stopTimeUpdate.setDeparture(stopTimeEvent);
+        } else {
+            log.warn("Unknown stop estimate type: {}", stopEstimate.getType());
+        }
         
         return tripUpdate.toBuilder().addStopTimeUpdate(stopTimeUpdate).build();
     }
