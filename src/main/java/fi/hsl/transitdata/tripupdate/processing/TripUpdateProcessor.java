@@ -168,15 +168,23 @@ public class TripUpdateProcessor {
                 .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
                 .setStopTimeProperties(stopTimeProperties);
         
-        if (stopEstimate.getType() == InternalMessages.StopEstimate.Type.ARRIVAL) {
-            stopTimeUpdate = stopTimeUpdate.setArrival(stopTimeEvent);
-        } else if (stopEstimate.getType() == InternalMessages.StopEstimate.Type.DEPARTURE) {
-            stopTimeUpdate = stopTimeUpdate.setDeparture(stopTimeEvent);
-        } else {
-            log.warn("Unknown stop estimate type: {}", stopEstimate.getType());
+        int stopTimeUpdateToBeRemovedIndex = -1;
+        
+        for (int i=0; i<tripUpdate.getStopTimeUpdateList().size(); i++) {
+            if (stopEstimate.getStopId().equals(tripUpdate.getStopTimeUpdateList().get(i).getStopId())) {
+                stopTimeUpdateToBeRemovedIndex = i;
+                StopTimeEvent arrival = tripUpdate.getStopTimeUpdateList().get(i).getArrival();
+                StopTimeEvent departure = tripUpdate.getStopTimeUpdateList().get(i).getDeparture();
+                stopTimeUpdate = stopTimeUpdate.setArrival(arrival).setDeparture(departure);
+                break;
+            }
         }
         
-        int stopTimeUpdateToBeRemovedIndex = getStopTimeUpdateToBeRemovedIndex(tripUpdate, stopEstimate.getStopId());
+        if (stopTimeUpdateToBeRemovedIndex < 0) {
+            log.warn("No stop time update to be removed index found for stopId {}", stopEstimate.getStopId());
+        }
+        
+        //int stopTimeUpdateToBeRemovedIndex = getStopTimeUpdateToBeRemovedIndex(tripUpdate, stopEstimate.getStopId());
         log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}",
                 stopEstimate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId());
         
@@ -184,23 +192,6 @@ public class TripUpdateProcessor {
                 .removeStopTimeUpdate(stopTimeUpdateToBeRemovedIndex)
                 .addStopTimeUpdate(stopTimeUpdate)
                 .build();
-    }
-    
-    private int getStopTimeUpdateToBeRemovedIndex(TripUpdate tripUpdate, String stopId) {
-        int indexToBeRemoved = -1;
-        
-        for (int i=0; i<tripUpdate.getStopTimeUpdateList().size(); i++) {
-            if (stopId.equals(tripUpdate.getStopTimeUpdateList().get(i).getStopId())) {
-                indexToBeRemoved = i;
-                break;
-            }
-        }
-        
-        if (indexToBeRemoved < 0) {
-            log.warn("No stop time update to be removed index found for stopId {}", stopId);
-        }
-        
-        return indexToBeRemoved;
     }
     
     private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
