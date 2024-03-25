@@ -148,9 +148,9 @@ public class TripUpdateProcessor {
     }
     
     private TripUpdate processTargetedStopIds(TripUpdate tripUpdate, InternalMessages.StopEstimate stopEstimate) {
-        log.info("TargetedStopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, OperationDay={}, StartTime={}",
+        log.info("TargetedStopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, Type={}, OperationDay={}, StartTime={}",
                 stopEstimate.getStopId(), stopEstimate.getTargetedStopId(), stopEstimate.getTripInfo().getRouteId(),
-                stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getTripInfo().getOperatingDay(),
+                stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getType(), stopEstimate.getTripInfo().getOperatingDay(),
                 stopEstimate.getTripInfo().getStartTime());
         
         StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
