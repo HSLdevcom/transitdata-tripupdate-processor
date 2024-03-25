@@ -162,8 +162,8 @@ public class TripUpdateProcessorTest {
                 .build());
         
         assertTrue(tripUpdate.isPresent());
-        assertEquals(1, tripUpdate.get().getStopTimeUpdate(1).getStopSequence());
-        assertEquals("2", tripUpdate.get().getStopTimeUpdate(1).getStopTimeProperties().getAssignedStopId());
+        assertEquals(1, tripUpdate.get().getStopTimeUpdate(0).getStopSequence());
+        assertEquals("2", tripUpdate.get().getStopTimeUpdate(0).getStopTimeProperties().getAssignedStopId());
     }
 
     @Test

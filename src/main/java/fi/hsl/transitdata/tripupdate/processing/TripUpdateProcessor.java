@@ -176,7 +176,31 @@ public class TripUpdateProcessor {
             log.warn("Unknown stop estimate type: {}", stopEstimate.getType());
         }
         
-        return tripUpdate.toBuilder().addStopTimeUpdate(stopTimeUpdate).build();
+        int stopTimeUpdateToBeRemovedIndex = getStopTimeUpdateToBeRemovedIndex(tripUpdate, stopEstimate.getStopId());
+        log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}",
+                stopTimeUpdate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId());
+        
+        return tripUpdate.toBuilder()
+                .removeStopTimeUpdate(stopTimeUpdateToBeRemovedIndex)
+                .addStopTimeUpdate(stopTimeUpdate)
+                .build();
+    }
+    
+    private int getStopTimeUpdateToBeRemovedIndex(TripUpdate tripUpdate, String stopId) {
+        int indexToBeRemoved = -1;
+        
+        for (int i=0; i<tripUpdate.getStopTimeUpdateList().size(); i++) {
+            if (stopId.equals(tripUpdate.getStopTimeUpdateList().get(i).getStopId())) {
+                indexToBeRemoved = i;
+                break;
+            }
+        }
+        
+        if (indexToBeRemoved < 0) {
+            log.warn("No stop time update index to be removed found for stopId {}", stopId);
+        }
+        
+        return indexToBeRemoved;
     }
     
     private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
