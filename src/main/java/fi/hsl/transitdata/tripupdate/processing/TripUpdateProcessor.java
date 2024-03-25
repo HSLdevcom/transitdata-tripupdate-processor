@@ -197,7 +197,7 @@ public class TripUpdateProcessor {
         }
         
         if (indexToBeRemoved < 0) {
-            log.warn("No stop time update index to be removed found for stopId {}", stopId);
+            log.warn("No stop time update to be removed index found for stopId {}", stopId);
         }
         
         return indexToBeRemoved;
