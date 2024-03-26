@@ -153,12 +153,6 @@ public class TripUpdateProcessor {
                 stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getType(), stopEstimate.getTripInfo().getOperatingDay(),
                 stopEstimate.getTripInfo().getStartTime());
         
-        StopTimeEvent stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                .setDelay(0)
-                .setTime(stopEstimate.getEstimatedTimeUtcMs())
-                .setUncertainty(0)
-                .build();
-        
         StopTimeProperties stopTimeProperties = GtfsRealtime.TripUpdate.StopTimeProperties.newBuilder()
                 .setAssignedStopId(stopEstimate.getTargetedStopId())
                 .build();
@@ -184,9 +178,9 @@ public class TripUpdateProcessor {
             log.warn("No stop time update to be removed index found for stopId {}", stopEstimate.getStopId());
         }
         
-        //int stopTimeUpdateToBeRemovedIndex = getStopTimeUpdateToBeRemovedIndex(tripUpdate, stopEstimate.getStopId());
-        log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}",
-                stopEstimate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId());
+        log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}. Index: {}. Sequence: {}",
+                stopEstimate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId(),
+                stopTimeUpdateToBeRemovedIndex, stopEstimate.getStopSequence());
         
         return tripUpdate.toBuilder()
                 .removeStopTimeUpdate(stopTimeUpdateToBeRemovedIndex)
