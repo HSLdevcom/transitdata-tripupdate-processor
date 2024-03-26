@@ -183,8 +183,7 @@ public class TripUpdateProcessor {
                 stopTimeUpdateToBeRemovedIndex, stopEstimate.getStopSequence());
         
         return tripUpdate.toBuilder()
-                .removeStopTimeUpdate(stopTimeUpdateToBeRemovedIndex)
-                .addStopTimeUpdate(stopTimeUpdate)
+                .setStopTimeUpdate(stopTimeUpdateToBeRemovedIndex, stopTimeUpdate)
                 .build();
     }
     
