@@ -134,6 +134,37 @@ public class TripUpdateProcessorTest {
 
         assertEquals(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED, cancellationOfCancellation.getTrip().getScheduleRelationship());
     }
+    
+    @Test
+    public void testAssignedStopIdIsSet() {
+        TripUpdateProcessor processor = new TripUpdateProcessor(null);
+        
+        InternalMessages.TripInfo tripInfo = InternalMessages.TripInfo.newBuilder()
+                .setTripId("trip_1")
+                .setDirectionId(1)
+                .setOperatingDay("20240315")
+                .setStartTime("13:43:00")
+                .setRouteId("2015")
+                .setScheduleType(InternalMessages.TripInfo.ScheduleType.ADDED)
+                .build();
+        
+        Optional<GtfsRealtime.TripUpdate> tripUpdate = processor.processStopEstimate(InternalMessages.StopEstimate.newBuilder()
+                .setSchemaVersion(1)
+                .setStopId("1")
+                .setTargetedStopId("2")
+                .setStopSequence(1)
+                .setEstimatedTimeUtcMs(0)
+                .setScheduledTimeUtcMs(0)
+                .setLastModifiedUtcMs(0)
+                .setType(InternalMessages.StopEstimate.Type.DEPARTURE)
+                .setStatus(InternalMessages.StopEstimate.Status.SCHEDULED)
+                .setTripInfo(tripInfo)
+                .build());
+        
+        assertTrue(tripUpdate.isPresent());
+        assertEquals(1, tripUpdate.get().getStopTimeUpdate(0).getStopSequence());
+        assertEquals("2", tripUpdate.get().getStopTimeUpdate(0).getStopTimeProperties().getAssignedStopId());
+    }
 
     @Test
     public void testCancellationOfCancellationWithoutPreviousStopTimeUpdates() {
