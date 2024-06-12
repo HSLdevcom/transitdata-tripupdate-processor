@@ -4,12 +4,8 @@ import com.google.transit.realtime.GtfsRealtime;
 import fi.hsl.common.transitdata.PubtransFactory;
 import fi.hsl.common.transitdata.RouteIdUtils;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class GtfsRtFactory {
-    
-    private static final Logger log = LoggerFactory.getLogger(GtfsRtFactory.class);
 
     public static final int DIRECTION_ID_OUTBOUND = 0;
     public static final int DIRECTION_ID_INBOUND = 1;
