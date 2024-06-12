@@ -88,11 +88,13 @@ public class MessageRouter implements IMessageHandler {
                         if (maybeTripUpdate.isPresent()) {
                             final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
                             final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
-                            
+
                             final boolean tripUpdateIsValid = tripUpdateValidators.stream().allMatch(validator -> {
                                 final boolean isValid = validator.validate(tripUpdate);
                                 if (!isValid) {
                                     final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
+                                    log.debug("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+
                                     messageStats.incrementInvalidTripUpdates("validator-" + validator.getClass().getSimpleName());
                                 }
                                 return isValid;
@@ -103,11 +105,11 @@ public class MessageRouter implements IMessageHandler {
                                 sendTripUpdate(pair, eventTimeMs);
                             }
                         } else {
-                            //log.info("Failed to process TripUpdate from source schema {}", schema.schema.toString());
+                            log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
                             messageStats.incrementInvalidTripUpdates("processing_failed-" + schema.schema);
                         }
                     } else {
-                        //log.info("Message didn't pass validation, ignoring.");
+                        log.debug("Message didn't pass validation, ignoring.");
                         messageStats.incrementInvalidTripUpdates("message_validator");
                     }
                 } else {
@@ -136,7 +138,7 @@ public class MessageRouter implements IMessageHandler {
 
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
-        
+
         debouncer.debounce(tripId, () -> {
             GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
             producer.newMessage()
