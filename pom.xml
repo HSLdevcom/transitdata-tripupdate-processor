@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <common.version>1.6.1-RC</common.version>
+        <common.version>1.6.1</common.version>
         <testcontainers.version>1.17.6</testcontainers.version>
     </properties>
     <profiles>
