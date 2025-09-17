@@ -22,19 +22,18 @@ public class TripUpdateMaxAgeValidator implements ITripUpdateValidator {
 
         //If a TripUpdate has no StopTimeUpdates, it is most likely represents a trip that has been cancelled
         //Current hypothesis is that these messages should always be relevant and thus routed through
-        boolean isCancellation = tripUpdate.getTrip().hasScheduleRelationship() &&
-                tripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
+        boolean isCancellation = tripUpdate.getTrip().hasScheduleRelationship() && tripUpdate.getTrip()
+                .getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
 
         if (isCancellation || tripUpdate.getStopTimeUpdateList().isEmpty()) {
             return true;
         }
 
-        OptionalLong maxStopTimeEventTime = tripUpdate.getStopTimeUpdateList().stream()
-                .flatMap(stu -> stu.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA ?
-                        Stream.empty() :
-                        Stream.of(stu.getArrival(), stu.getDeparture()))
-                .mapToLong(GtfsRealtime.TripUpdate.StopTimeEvent::getTime)
-                .max();
+        OptionalLong maxStopTimeEventTime = tripUpdate.getStopTimeUpdateList().stream().flatMap(stu -> stu
+                .getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA
+                        ? Stream.empty()
+                        : Stream.of(stu.getArrival(), stu.getDeparture()))
+                .mapToLong(GtfsRealtime.TripUpdate.StopTimeEvent::getTime).max();
 
         //If maximum stop event time is not present, all stop updates are NO_DATA -> trip update is valid
         if (!maxStopTimeEventTime.isPresent()) {

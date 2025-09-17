@@ -17,9 +17,7 @@ public class MissingEstimatesValidator implements ITripUpdateValidator {
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             if (previous != null) {
-                if (previous.hasDeparture()
-                        && previous.getDeparture().hasTime()
-                        && stopTimeUpdate.hasArrival()
+                if (previous.hasDeparture() && previous.getDeparture().hasTime() && stopTimeUpdate.hasArrival()
                         && stopTimeUpdate.getArrival().hasTime()
                         && previous.getDeparture().getTime() == stopTimeUpdate.getArrival().getTime()) {
                     sameEstimate++;

@@ -19,31 +19,35 @@ public class TripCancellationProcessorTest {
     @Test
     public void messageWithWrongPayloadIsDiscarded() throws Exception {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(MockDataUtils.generateValidJoreId(),
-                MockDataUtils.generateValidRouteName(),
-                System.currentTimeMillis());
+                MockDataUtils.generateValidRouteName(), System.currentTimeMillis());
         TripCancellationProcessor proc = new TripCancellationProcessor(null, true);
 
         assertFalse(proc.validateMessage(arrival.toByteArray()));
     }
-
 
     @Test
     public void messageWithValidPayloadIsAccepted() throws Exception {
         final boolean shouldPass = true;
         final String routeName = "1014";
 
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
     }
 
-
-    private void testValidationForTripCancellation(boolean shouldPass, String routeName, int direction, InternalMessages.StopEstimate.Type eventType) throws Exception {
+    private void testValidationForTripCancellation(boolean shouldPass, String routeName, int direction,
+            InternalMessages.StopEstimate.Type eventType) throws Exception {
         long dvjId = MockDataUtils.generateValidJoreId();
 
-        LocalDateTime someOperatingTime = Instant.now().plus(Duration.ofHours(5)).atOffset(ZoneOffset.UTC).toLocalDateTime();
-        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, routeName, direction, someOperatingTime);
+        LocalDateTime someOperatingTime = Instant.now().plus(Duration.ofHours(5)).atOffset(ZoneOffset.UTC)
+                .toLocalDateTime();
+        InternalMessages.TripCancellation cancellation = MockDataUtils.mockTripCancellation(dvjId, routeName, direction,
+                someOperatingTime);
 
         TripCancellationProcessor proc = new TripCancellationProcessor(null, true);
 
@@ -56,13 +60,16 @@ public class TripCancellationProcessorTest {
         final boolean shouldPass = false;
         final String routeName = "3001K";
 
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
     }
-
 
     @Test
     public void messageForTrainRouteUIsDiscarded() throws Exception {
@@ -70,12 +77,15 @@ public class TripCancellationProcessorTest {
         final boolean shouldPass = false;
         final String routeName = "3002U";
 
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
     }
-
 
     @Test
     public void messageWithJoreDirectionShouldPassAndOthersBeDiscarded() throws Exception {
@@ -86,11 +96,15 @@ public class TripCancellationProcessorTest {
         testValidationForTripCancellation(false, routeName, gtfsRtDir, InternalMessages.StopEstimate.Type.ARRIVAL);
         testValidationForTripCancellation(false, routeName, gtfsRtDir, InternalMessages.StopEstimate.Type.DEPARTURE);
 
-        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
-        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForTripCancellation(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
         final int tooLargeDir = 3;
         testValidationForTripCancellation(false, routeName, tooLargeDir, InternalMessages.StopEstimate.Type.ARRIVAL);

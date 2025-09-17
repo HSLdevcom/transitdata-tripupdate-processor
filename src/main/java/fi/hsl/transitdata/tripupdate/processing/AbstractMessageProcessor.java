@@ -52,7 +52,6 @@ public abstract class AbstractMessageProcessor {
      */
     public abstract Optional<TripUpdateWithId> processMessage(Message msg);
 
-
     protected boolean validateTripData(String routeName, int direction) {
         //Normalize route ID before validation
         routeName = RouteIdUtils.normalizeRouteId(routeName);
@@ -67,7 +66,8 @@ public abstract class AbstractMessageProcessor {
             return false;
         }
 
-        if (direction != PubtransFactory.JORE_DIRECTION_ID_INBOUND && direction != PubtransFactory.JORE_DIRECTION_ID_OUTBOUND) {
+        if (direction != PubtransFactory.JORE_DIRECTION_ID_INBOUND
+                && direction != PubtransFactory.JORE_DIRECTION_ID_OUTBOUND) {
             logger.info("Direction {} is not a valid JORE-direction, discarding message", direction);
             return false;
         }

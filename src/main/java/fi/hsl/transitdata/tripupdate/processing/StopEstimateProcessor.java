@@ -26,11 +26,8 @@ public class StopEstimateProcessor extends AbstractMessageProcessor {
             final String tripId = data.getTripInfo().getTripId();
 
             Optional<GtfsRealtime.TripUpdate> maybeTripUpdate = tripProcessor.processStopEstimate(data);
-            return maybeTripUpdate.flatMap(tripUpdate ->
-                    TripUpdateWithId.newInstance(tripId, tripUpdate)
-            );
-        }
-        catch (Exception e) {
+            return maybeTripUpdate.flatMap(tripUpdate -> TripUpdateWithId.newInstance(tripId, tripUpdate));
+        } catch (Exception e) {
             log.error("Failed to parse message payload", e);
             return Optional.empty();
         }
@@ -44,8 +41,7 @@ public class StopEstimateProcessor extends AbstractMessageProcessor {
             int direction = data.getTripInfo().getDirectionId();
 
             return validateTripData(route, direction);
-        }
-        catch (InvalidProtocolBufferException e) {
+        } catch (InvalidProtocolBufferException e) {
             log.error("Failed to parse StopEstimate from message payload", e);
             return false;
         }

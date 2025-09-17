@@ -8,7 +8,8 @@ import java.util.stream.Collectors;
 import static com.google.transit.realtime.GtfsRealtime.TripUpdate.*;
 
 public class GtfsRtValidator {
-    private GtfsRtValidator() {}
+    private GtfsRtValidator() {
+    }
 
     public static List<StopTimeUpdate> cleanStopTimeUpdates(List<StopTimeUpdate> rawEstimates, StopTimeUpdate latest) {
         List<StopTimeUpdate> fixedTimestamps = validateArrivalsAndDepartures(rawEstimates, latest);
@@ -23,9 +24,8 @@ public class GtfsRtValidator {
      * Our updates might have extra via-points there which can confuse the clients.
      */
     static List<StopTimeUpdate> removeStopSequences(List<StopTimeUpdate> updates) {
-        return updates.stream().map(update ->
-            update.toBuilder().clearStopSequence().build()
-        ).collect(Collectors.toList());
+        return updates.stream().map(update -> update.toBuilder().clearStopSequence().build())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -37,22 +37,12 @@ public class GtfsRtValidator {
     static List<StopTimeUpdate> fillMissingArrivalsAndDepartures(List<StopTimeUpdate> updates) {
         return updates.stream().map(update -> {
             if (update.hasArrival() && !update.hasDeparture()) {
-                StopTimeEvent newDeparture = StopTimeEvent.newBuilder()
-                        .setTime(update.getArrival().getTime())
-                        .build();
-                return update.toBuilder()
-                        .setDeparture(newDeparture)
-                        .build();
-            }
-            else if (update.hasDeparture() && !update.hasArrival()) {
-                StopTimeEvent newArrival = StopTimeEvent.newBuilder()
-                        .setTime(update.getDeparture().getTime())
-                        .build();
-                return update.toBuilder()
-                        .setArrival(newArrival)
-                        .build();
-            }
-            else {
+                StopTimeEvent newDeparture = StopTimeEvent.newBuilder().setTime(update.getArrival().getTime()).build();
+                return update.toBuilder().setDeparture(newDeparture).build();
+            } else if (update.hasDeparture() && !update.hasArrival()) {
+                StopTimeEvent newArrival = StopTimeEvent.newBuilder().setTime(update.getDeparture().getTime()).build();
+                return update.toBuilder().setArrival(newArrival).build();
+            } else {
                 return update;
             }
         }).collect(Collectors.toList());
@@ -63,10 +53,11 @@ public class GtfsRtValidator {
      * and also to running times (current arrival before previous departure).
      * OpenTripPlanner won't accept this, so we'll try to fix the timestamps by adjusting them appropriately.
      */
-    static List<StopTimeUpdate> validateArrivalsAndDepartures(List<StopTimeUpdate> rawEstimates, StopTimeUpdate latest) {
+    static List<StopTimeUpdate> validateArrivalsAndDepartures(List<StopTimeUpdate> rawEstimates,
+            StopTimeUpdate latest) {
         LinkedList<StopTimeUpdate> validList = new LinkedList<>();
         StopTimeUpdate previous = null;
-        for (StopTimeUpdate unvalidated: rawEstimates) {
+        for (StopTimeUpdate unvalidated : rawEstimates) {
             // If this is the latest message and it happens to be arrival, we want to use that timestamp.
             // otherwise always use departure.
             OnConflict conflictBehavior = OnConflict.DepartureWins;
@@ -82,8 +73,7 @@ public class GtfsRtValidator {
     }
 
     enum OnConflict {
-        DepartureWins,
-        ArrivalWins
+        DepartureWins, ArrivalWins
     }
 
     static StopTimeUpdate validateTimestamps(StopTimeUpdate prev, StopTimeUpdate cur, OnConflict conflictBehavior) {
@@ -94,8 +84,7 @@ public class GtfsRtValidator {
         if (prev != null) {
             if (prev.hasDeparture()) {
                 maybePrevTimestamp = Optional.of(prev.getDeparture().getTime());
-            }
-            else if (prev.hasArrival()) {
+            } else if (prev.hasArrival()) {
                 maybePrevTimestamp = Optional.of(prev.getArrival().getTime());
             }
         }
@@ -103,7 +92,9 @@ public class GtfsRtValidator {
         final Optional<StopTimeEvent> curArrival = cur.hasArrival() ? Optional.of(cur.getArrival()) : Optional.empty();
         Optional<StopTimeEvent> newArrival = validateMinTime(curArrival, maybePrevTimestamp);
 
-        final Optional<StopTimeEvent> curDeparture = cur.hasDeparture() ? Optional.of(cur.getDeparture()) : Optional.empty();
+        final Optional<StopTimeEvent> curDeparture = cur.hasDeparture()
+                ? Optional.of(cur.getDeparture())
+                : Optional.empty();
         Optional<StopTimeEvent> newDeparture = validateMinTime(curDeparture, maybePrevTimestamp);
 
         // Now both are at least >= then previous timestamp.
@@ -111,8 +102,7 @@ public class GtfsRtValidator {
         if (conflictBehavior == OnConflict.ArrivalWins) {
             Optional<Long> maybeArrivalTimestamp = newArrival.map(StopTimeEvent::getTime);
             newDeparture = validateMinTime(newDeparture, maybeArrivalTimestamp);
-        }
-        else if (conflictBehavior == OnConflict.DepartureWins) {
+        } else if (conflictBehavior == OnConflict.DepartureWins) {
             Optional<Long> maybeDepartureTimestamp = newDeparture.map(StopTimeEvent::getTime);
             newArrival = validateMaxTime(newArrival, maybeDepartureTimestamp);
         }
@@ -127,29 +117,29 @@ public class GtfsRtValidator {
     /**
      * Either return the same valid StopTimeEvent or create a copy with time adjusted to minimum
      */
-    static Optional<StopTimeEvent> validateMinTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMinTime) {
-        return maybeEvent.map(event ->
-           maybeMinTime.map(minTimestamp -> {
-               if (event.getTime() < minTimestamp) {
-                   return event.toBuilder().setTime(minTimestamp).build();
-               } else {
-                   return event;
-               }
-           }).orElse(event));
+    static Optional<StopTimeEvent> validateMinTime(final Optional<StopTimeEvent> maybeEvent,
+            final Optional<Long> maybeMinTime) {
+        return maybeEvent.map(event -> maybeMinTime.map(minTimestamp -> {
+            if (event.getTime() < minTimestamp) {
+                return event.toBuilder().setTime(minTimestamp).build();
+            } else {
+                return event;
+            }
+        }).orElse(event));
     }
 
     /**
      * Either return the same valid StopTimeEvent or create a copy with time adjusted to maximum
      */
-    static Optional<StopTimeEvent> validateMaxTime(final Optional<StopTimeEvent> maybeEvent, final Optional<Long> maybeMaxTime) {
-        return maybeEvent.map(event ->
-            maybeMaxTime.map(maxTimestamp -> {
-                if (event.getTime() > maxTimestamp) {
-                    return event.toBuilder().setTime(maxTimestamp).build();
-                } else {
-                    return event;
-                }
-            }).orElse(event));
+    static Optional<StopTimeEvent> validateMaxTime(final Optional<StopTimeEvent> maybeEvent,
+            final Optional<Long> maybeMaxTime) {
+        return maybeEvent.map(event -> maybeMaxTime.map(maxTimestamp -> {
+            if (event.getTime() > maxTimestamp) {
+                return event.toBuilder().setTime(maxTimestamp).build();
+            } else {
+                return event;
+            }
+        }).orElse(event));
     }
 
     static List<StopTimeUpdate> removeEstimatesFromNoDataUpdates(List<StopTimeUpdate> stopTimeUpdates) {
