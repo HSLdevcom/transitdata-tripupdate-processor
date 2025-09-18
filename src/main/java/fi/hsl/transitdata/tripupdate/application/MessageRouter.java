@@ -57,18 +57,23 @@ public class MessageRouter implements IMessageHandler {
 
         final boolean filterTrainData = config.getBoolean("validator.filterTrainData");
 
-        processors.put(ProtobufSchema.InternalMessagesStopEstimate, new StopEstimateProcessor(tripUpdateProcessor, filterTrainData));
-        processors.put(ProtobufSchema.InternalMessagesTripCancellation, new TripCancellationProcessor(tripUpdateProcessor, filterTrainData));
+        processors.put(ProtobufSchema.InternalMessagesStopEstimate,
+                new StopEstimateProcessor(tripUpdateProcessor, filterTrainData));
+        processors.put(ProtobufSchema.InternalMessagesTripCancellation,
+                new TripCancellationProcessor(tripUpdateProcessor, filterTrainData));
     }
 
     private List<ITripUpdateValidator> registerTripUpdateValidators() {
 
         List<ITripUpdateValidator> tripUpdateValidators = new ArrayList<>();
 
-        tripUpdateValidators.add(new TripUpdateMaxAgeValidator(config.getDuration("validator.tripUpdateMaxAge", TimeUnit.SECONDS)));
-        tripUpdateValidators.add(new PrematureDeparturesValidator(config.getDuration("validator.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS),
+        tripUpdateValidators
+                .add(new TripUpdateMaxAgeValidator(config.getDuration("validator.tripUpdateMaxAge", TimeUnit.SECONDS)));
+        tripUpdateValidators.add(new PrematureDeparturesValidator(
+                config.getDuration("validator.tripUpdateMinTimeBeforeDeparture", TimeUnit.SECONDS),
                 config.getString("validator.timezone")));
-        tripUpdateValidators.add(new MissingEstimatesValidator(config.getInt("validator.tripUpdateMaxMissingEstimates")));
+        tripUpdateValidators
+                .add(new MissingEstimatesValidator(config.getInt("validator.tripUpdateMaxMissingEstimates")));
 
         return tripUpdateValidators;
 
@@ -84,7 +89,8 @@ public class MessageRouter implements IMessageHandler {
                 if (processor != null) {
                     if (processor.validateMessage(received.getData())) {
 
-                        Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor.processMessage(received);
+                        Optional<AbstractMessageProcessor.TripUpdateWithId> maybeTripUpdate = processor
+                                .processMessage(received);
                         if (maybeTripUpdate.isPresent()) {
                             final AbstractMessageProcessor.TripUpdateWithId pair = maybeTripUpdate.get();
                             final GtfsRealtime.TripUpdate tripUpdate = pair.getTripUpdate();
@@ -93,9 +99,13 @@ public class MessageRouter implements IMessageHandler {
                                 final boolean isValid = validator.validate(tripUpdate);
                                 if (!isValid) {
                                     final GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
-                                    log.debug("Trip update for {} / {} / {} / {} failed validation when validating with {}", trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(), trip.getStartTime(), validator.getClass().getName());
+                                    log.debug(
+                                            "Trip update for {} / {} / {} / {} failed validation when validating with {}",
+                                            trip.getRouteId(), trip.getDirectionId(), trip.getStartDate(),
+                                            trip.getStartTime(), validator.getClass().getName());
 
-                                    messageStats.incrementInvalidTripUpdates("validator-" + validator.getClass().getSimpleName());
+                                    messageStats.incrementInvalidTripUpdates(
+                                            "validator-" + validator.getClass().getSimpleName());
                                 }
                                 return isValid;
                             });
@@ -118,12 +128,11 @@ public class MessageRouter implements IMessageHandler {
                 }
             });
 
-            consumer.acknowledgeAsync(received)
-                    .exceptionally(throwable -> {
-                        log.error("Failed to ack Pulsar message", throwable);
-                        return null;
-                    })
-                    .thenRun(() -> {});
+            consumer.acknowledgeAsync(received).exceptionally(throwable -> {
+                log.error("Failed to ack Pulsar message", throwable);
+                return null;
+            }).thenRun(() -> {
+            });
         } catch (Exception e) {
             log.error("Exception while handling message", e);
         }
@@ -133,22 +142,23 @@ public class MessageRouter implements IMessageHandler {
         }
     }
 
-    private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair, final long pulsarEventTimestamp) {
+    private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair,
+            final long pulsarEventTimestamp) {
         messageStats.incrementMessagesSent();
 
         final String tripId = tuIdPair.getTripId();
         final GtfsRealtime.TripUpdate tripUpdate = tuIdPair.getTripUpdate();
 
         debouncer.debounce(tripId, () -> {
-            GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate, tripUpdate.getTimestamp());
-            producer.newMessage()
-                    .key(tripId)
-                    .eventTime(pulsarEventTimestamp)
-                    .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
-                    .value(feedMessage.toByteArray())
-                    .sendAsync()
+            GtfsRealtime.FeedMessage feedMessage = FeedMessageFactory.createDifferentialFeedMessage(tripId, tripUpdate,
+                    tripUpdate.getTimestamp());
+            producer.newMessage().key(tripId).eventTime(pulsarEventTimestamp)
+                    .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA,
+                            TransitdataProperties.ProtobufSchema.GTFS_TripUpdate.toString())
+                    .value(feedMessage.toByteArray()).sendAsync()
                     .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
-                            tripId, tripUpdate.getStopTimeUpdateCount(), tripUpdate.getTrip().getScheduleRelationship()));
+                            tripId, tripUpdate.getStopTimeUpdateCount(),
+                            tripUpdate.getTrip().getScheduleRelationship()));
         });
     }
 }

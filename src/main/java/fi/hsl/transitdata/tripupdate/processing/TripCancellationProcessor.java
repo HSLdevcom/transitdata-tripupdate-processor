@@ -26,17 +26,20 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
         try {
             InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(payload);
 
-            final boolean entireDepartureCancelled =
-                    tripCancellation.getAffectedDeparturesType() == InternalMessages.TripCancellation.AffectedDeparturesType.CANCEL_ENTIRE_DEPARTURE &&
-                    tripCancellation.getDeviationCasesType() == InternalMessages.TripCancellation.DeviationCasesType.CANCEL_DEPARTURE;
+            final boolean entireDepartureCancelled = tripCancellation
+                    .getAffectedDeparturesType() == InternalMessages.TripCancellation.AffectedDeparturesType.CANCEL_ENTIRE_DEPARTURE
+                    && tripCancellation
+                            .getDeviationCasesType() == InternalMessages.TripCancellation.DeviationCasesType.CANCEL_DEPARTURE;
             if (!entireDepartureCancelled) {
                 //Produce cancellation messages only for full cancellations and not partial cancellations
-                log.debug("{} (dir: {}) at {} {} was not fully cancelled, ignoring cancellation message..", tripCancellation.getRouteId(), tripCancellation.getDirectionId(), tripCancellation.getStartDate(), tripCancellation.getStartTime());
+                log.debug("{} (dir: {}) at {} {} was not fully cancelled, ignoring cancellation message..",
+                        tripCancellation.getRouteId(), tripCancellation.getDirectionId(),
+                        tripCancellation.getStartDate(), tripCancellation.getStartTime());
                 return false;
             }
 
-            if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() &&
-                tripCancellation.hasStartDate() && tripCancellation.hasStartTime()) {
+            if (tripCancellation.hasDirectionId() && tripCancellation.hasRouteId() && tripCancellation.hasStartDate()
+                    && tripCancellation.hasStartTime()) {
 
                 String route = tripCancellation.getRouteId();
                 int directionId = tripCancellation.getDirectionId();
@@ -52,10 +55,12 @@ public class TripCancellationProcessor extends AbstractMessageProcessor {
     @Override
     public Optional<TripUpdateWithId> processMessage(Message msg) {
         try {
-            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation.parseFrom(msg.getData());
+            InternalMessages.TripCancellation tripCancellation = InternalMessages.TripCancellation
+                    .parseFrom(msg.getData());
             final String tripId = tripCancellation.getTripId();
 
-            GtfsRealtime.TripUpdate tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(), msg.getEventTime(), tripCancellation);
+            GtfsRealtime.TripUpdate tripUpdate = tripUpdateProcessor.processTripCancellation(msg.getKey(),
+                    msg.getEventTime(), tripCancellation);
             return TripUpdateWithId.newInstance(tripId, tripUpdate);
         } catch (Exception e) {
             log.error("Could not parse TripCancellation: " + e.getMessage(), e);
