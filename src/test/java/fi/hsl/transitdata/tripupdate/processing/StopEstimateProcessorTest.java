@@ -14,27 +14,29 @@ public class StopEstimateProcessorTest {
     @Test
     public void messageWithWrongPayloadIsDiscarded() throws Exception {
         PubtransTableProtos.ROIArrival arrival = MockDataUtils.mockROIArrival(MockDataUtils.generateValidJoreId(),
-                MockDataUtils.generateValidRouteName(),
-                System.currentTimeMillis());
+                MockDataUtils.generateValidRouteName(), System.currentTimeMillis());
         StopEstimateProcessor proc = new StopEstimateProcessor(null, true);
 
         assertFalse(proc.validateMessage(arrival.toByteArray()));
     }
-
 
     @Test
     public void messageWithValidPayloadIsAccepted() throws Exception {
         final boolean shouldPass = true;
         final String routeName = "1014";
 
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
     }
 
-
-    private void testValidationForStopEstimate(boolean shouldPass, String routeName, int direction, InternalMessages.StopEstimate.Type eventType) throws Exception {
+    private void testValidationForStopEstimate(boolean shouldPass, String routeName, int direction,
+            InternalMessages.StopEstimate.Type eventType) throws Exception {
         long dvjId = MockDataUtils.generateValidJoreId();
         PubtransTableProtos.Common common = MockDataUtils.mockCommon(dvjId).build();
         PubtransTableProtos.DOITripInfo mockTripInfo = MockDataUtils.mockDOITripInfo(dvjId, routeName, direction);
@@ -51,13 +53,16 @@ public class StopEstimateProcessorTest {
         final boolean shouldPass = false;
         final String routeName = "3001K";
 
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
     }
-
 
     @Test
     public void messageForTrainRouteUIsDiscarded() throws Exception {
@@ -65,12 +70,15 @@ public class StopEstimateProcessorTest {
         final boolean shouldPass = false;
         final String routeName = "3002U";
 
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(shouldPass, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
     }
-
 
     @Test
     public void messageWithJoreDirectionShouldPassAndOthersBeDiscarded() throws Exception {
@@ -81,11 +89,15 @@ public class StopEstimateProcessorTest {
         testValidationForStopEstimate(false, routeName, gtfsRtDir, InternalMessages.StopEstimate.Type.ARRIVAL);
         testValidationForStopEstimate(false, routeName, gtfsRtDir, InternalMessages.StopEstimate.Type.DEPARTURE);
 
-        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_INBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
-        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.ARRIVAL);
-        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND, InternalMessages.StopEstimate.Type.DEPARTURE);
+        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.ARRIVAL);
+        testValidationForStopEstimate(true, routeName, PubtransFactory.JORE_DIRECTION_ID_OUTBOUND,
+                InternalMessages.StopEstimate.Type.DEPARTURE);
 
         final int tooLargeDir = 3;
         testValidationForStopEstimate(false, routeName, tooLargeDir, InternalMessages.StopEstimate.Type.ARRIVAL);

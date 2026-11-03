@@ -23,8 +23,8 @@ public class PrematureDeparturesValidatorTest {
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107",
-                "17:14:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00",
+                stopTimeUpdates);
 
         assertEquals(false, validator.validate(tripUpdate));
 
@@ -40,8 +40,8 @@ public class PrematureDeparturesValidatorTest {
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 1541603400, 0));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107",
-                "17:14:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00",
+                stopTimeUpdates);
 
         assertEquals(false, validator.validate(tripUpdate));
 
@@ -57,7 +57,8 @@ public class PrematureDeparturesValidatorTest {
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:11:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:11:00",
+                stopTimeUpdates);
 
         assertEquals(true, validator.validate(tripUpdate));
 
@@ -73,7 +74,8 @@ public class PrematureDeparturesValidatorTest {
         Collection<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates = new ArrayList<>();
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("A", 0, 1541603400));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:11:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:11:00",
+                stopTimeUpdates);
 
         assertEquals(false, validator.validate(tripUpdate));
 
@@ -112,6 +114,5 @@ public class PrematureDeparturesValidatorTest {
 
         assertEquals(1541628060, validator.tripStartTimeToPosixTime(tripUpdate));
     }
-
 
 }

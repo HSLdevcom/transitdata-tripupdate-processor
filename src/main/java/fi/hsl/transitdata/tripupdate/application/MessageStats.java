@@ -1,6 +1,5 @@
 package fi.hsl.transitdata.tripupdate.application;
 
-
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -71,12 +70,11 @@ public class MessageStats {
 
     @Override
     public String toString() {
-        final String reasonsText = invalidTripUpdateReasons.entrySet().stream().map(entry -> entry.getKey() + ": " + entry.getValue()).collect(Collectors.joining(", "));
+        final String reasonsText = invalidTripUpdateReasons.entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue()).collect(Collectors.joining(", "));
 
-        return "Message stats:\n"+
-                "\tStart time: " + getDurationSecs() + " seconds ago\n" +
-                "\tMessages received: " + messagesReceived + "\n" +
-                "\tMessages sent: " + messagesSent + "\n" +
-                "\tInvalid trip updates: " + invalidTripUpdates + "(" + reasonsText + ")";
+        return "Message stats:\n" + "\tStart time: " + getDurationSecs() + " seconds ago\n" + "\tMessages received: "
+                + messagesReceived + "\n" + "\tMessages sent: " + messagesSent + "\n" + "\tInvalid trip updates: "
+                + invalidTripUpdates + "(" + reasonsText + ")";
     }
 }
