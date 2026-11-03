@@ -24,8 +24,8 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
     public boolean validate(GtfsRealtime.TripUpdate tripUpdate) {
         //If a TripUpdate has no StopTimeUpdates, it is most likely represents a trip that has been cancelled
         //Current hypothesis is that these messages should always be relevant and thus routed through
-        boolean isCancellation = tripUpdate.getTrip().hasScheduleRelationship() &&
-                tripUpdate.getTrip().getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
+        boolean isCancellation = tripUpdate.getTrip().hasScheduleRelationship() && tripUpdate.getTrip()
+                .getScheduleRelationship() == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
 
         if (isCancellation || tripUpdate.getStopTimeUpdateList().isEmpty()) {
             return true;
@@ -38,8 +38,10 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             return false;
         }
 
-        Optional<GtfsRealtime.TripUpdate.StopTimeUpdate> firstStopTimeUpdate = tripUpdate.getStopTimeUpdateList().stream()
-                .filter(stu -> stu.getScheduleRelationship() != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA)
+        Optional<GtfsRealtime.TripUpdate.StopTimeUpdate> firstStopTimeUpdate = tripUpdate.getStopTimeUpdateList()
+                .stream()
+                .filter(stu -> stu
+                        .getScheduleRelationship() != GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA)
                 .findFirst();
 
         //If stop time update is not present, all stop updates are NO_DATA -> trip update is valid
@@ -47,7 +49,9 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             return true;
         }
 
-        long firstStopTime = firstStopTimeUpdate.get().hasDeparture() ? firstStopTimeUpdate.get().getDeparture().getTime() : firstStopTimeUpdate.get().getArrival().getTime();
+        long firstStopTime = firstStopTimeUpdate.get().hasDeparture()
+                ? firstStopTimeUpdate.get().getDeparture().getTime()
+                : firstStopTimeUpdate.get().getArrival().getTime();
 
         long tripStartTimePosix = tripStartTimeToPosixTime(tripUpdate);
         //Filter out premature departures, where the departure time for the first StopTimeUpdate is more than the
@@ -76,18 +80,20 @@ public class PrematureDeparturesValidator implements ITripUpdateValidator {
             } else {
                 hoursString = "0" + hours;
             }
-            tripStartTimeLocal = LocalTime.parse(hoursString + ":" + tripStartTimeArray[1] + ":" + tripStartTimeArray[2]);
+            tripStartTimeLocal = LocalTime
+                    .parse(hoursString + ":" + tripStartTimeArray[1] + ":" + tripStartTimeArray[2]);
         }
 
-        LocalDate tripStartDateLocal = LocalDate.parse(tripUpdate.getTrip().getStartDate(), DateTimeFormatter.BASIC_ISO_DATE);
+        LocalDate tripStartDateLocal = LocalDate.parse(tripUpdate.getTrip().getStartDate(),
+                DateTimeFormatter.BASIC_ISO_DATE);
         if (over24Hours) {
             tripStartDateLocal = tripStartDateLocal.plusDays(1);
         }
 
-        long tripStartTimeEpoch = LocalDateTime.of(tripStartDateLocal, tripStartTimeLocal).atZone(zoneId).toInstant().getEpochSecond();
+        long tripStartTimeEpoch = LocalDateTime.of(tripStartDateLocal, tripStartTimeLocal).atZone(zoneId).toInstant()
+                .getEpochSecond();
 
         return tripStartTimeEpoch;
     }
 
 }
-

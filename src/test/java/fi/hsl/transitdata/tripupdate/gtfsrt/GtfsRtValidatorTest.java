@@ -19,12 +19,11 @@ import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertFalse;
 
 public class GtfsRtValidatorTest {
-    final static long[] SRC_ARRIVALS_MS =   new long[] { 1545674400000L, 1545674500000L, 1545674600000L };
-    final static long[] SRC_DEPARTURES_MS = new long[] { 1545674450000L, 1545674550000L, 1545674650000L };
+    final static long[] SRC_ARRIVALS_MS = new long[]{1545674400000L, 1545674500000L, 1545674600000L};
+    final static long[] SRC_DEPARTURES_MS = new long[]{1545674450000L, 1545674550000L, 1545674650000L};
 
     final static long[] DST_ARRIVALS = Arrays.stream(SRC_ARRIVALS_MS).map(ms -> ms / 1000).toArray();
     final static long[] DST_DEPARTURES = Arrays.stream(SRC_DEPARTURES_MS).map(ms -> ms / 1000).toArray();
-
 
     final static long DVI_ID = 1234567890L;
     final static long JPP_ID = 9876543210L;
@@ -33,7 +32,8 @@ public class GtfsRtValidatorTest {
     public void testValidateTime() throws Exception {
         long epoch = SRC_ARRIVALS_MS[1];
 
-        final Optional<StopTimeEvent> stopTimeEvent = Optional.of(MockDataFactory.mockStopTimeEvent(InternalMessages.StopEstimate.Type.ARRIVAL, epoch));
+        final Optional<StopTimeEvent> stopTimeEvent = Optional
+                .of(MockDataFactory.mockStopTimeEvent(InternalMessages.StopEstimate.Type.ARRIVAL, epoch));
 
         Optional<Long> laterMinTime = Optional.of(DST_ARRIVALS[2]);
         Optional<StopTimeEvent> shouldBeChanged = GtfsRtValidator.validateMinTime(stopTimeEvent, laterMinTime);
@@ -53,7 +53,8 @@ public class GtfsRtValidatorTest {
         assertTrue(stopTimeEvent.get().getTime() == shouldBeOriginal.get().getTime());
 
         //If event is empty we should get nothing
-        Optional<StopTimeEvent> nothing = GtfsRtValidator.validateMinTime(Optional.empty(), Optional.of(DST_ARRIVALS[0]));
+        Optional<StopTimeEvent> nothing = GtfsRtValidator.validateMinTime(Optional.empty(),
+                Optional.of(DST_ARRIVALS[0]));
         assertTrue(!nothing.isPresent());
         Optional<StopTimeEvent> stillNothing = GtfsRtValidator.validateMinTime(Optional.empty(), Optional.empty());
         assertTrue(!stillNothing.isPresent());
@@ -61,8 +62,10 @@ public class GtfsRtValidatorTest {
 
     @Test
     public void testValidateTimestampsOnlyArrival() throws Exception {
-        final StopTimeUpdate firstArrival = MockDataFactory.mockStopTimeUpdate(InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[0]);
-        final StopTimeUpdate secondArrival = MockDataFactory.mockStopTimeUpdate(InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[1]);
+        final StopTimeUpdate firstArrival = MockDataFactory
+                .mockStopTimeUpdate(InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[0]);
+        final StopTimeUpdate secondArrival = MockDataFactory
+                .mockStopTimeUpdate(InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[1]);
 
         validateTimestamps(firstArrival, secondArrival, GtfsRtValidator.OnConflict.ArrivalWins, DST_ARRIVALS[1], 0);
         validateTimestamps(secondArrival, firstArrival, GtfsRtValidator.OnConflict.ArrivalWins, DST_ARRIVALS[1], 0);
@@ -86,8 +89,8 @@ public class GtfsRtValidatorTest {
 
     }
 
-
-    void validateTimestamps(StopTimeUpdate prev, StopTimeUpdate cur, GtfsRtValidator.OnConflict onConflict, long expectedArrival, long expectedDeparture) {
+    void validateTimestamps(StopTimeUpdate prev, StopTimeUpdate cur, GtfsRtValidator.OnConflict onConflict,
+            long expectedArrival, long expectedDeparture) {
 
         StopTimeUpdate validated = GtfsRtValidator.validateTimestamps(prev, cur, onConflict);
         assertTrue(validated.hasArrival() == cur.hasArrival());
@@ -126,15 +129,15 @@ public class GtfsRtValidatorTest {
 
             StopTimeUpdate updatedFirst = updated.get(0);
             assertEquals(DST_ARRIVALS[1], updatedFirst.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[1], updatedFirst.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[1], updatedFirst.getDeparture().getTime());
 
             StopTimeUpdate updatedSecond = updated.get(1);
             assertEquals(DST_DEPARTURES[1], updatedSecond.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[1], updatedSecond.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[1], updatedSecond.getDeparture().getTime());
 
             StopTimeUpdate updatedThird = updated.get(2);
             assertEquals(DST_ARRIVALS[2], updatedThird.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[2], updatedThird.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[2], updatedThird.getDeparture().getTime());
         }
         {
             //Swap timestamps between first and last timestamp. all previous should be raised to the last departure
@@ -147,15 +150,15 @@ public class GtfsRtValidatorTest {
 
             StopTimeUpdate updatedFirst = updated.get(0);
             assertEquals(DST_ARRIVALS[2], updatedFirst.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[2], updatedFirst.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[2], updatedFirst.getDeparture().getTime());
 
             StopTimeUpdate updatedSecond = updated.get(1);
             assertEquals(DST_DEPARTURES[2], updatedSecond.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[2], updatedSecond.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[2], updatedSecond.getDeparture().getTime());
 
             StopTimeUpdate updatedThird = updated.get(2);
             assertEquals(DST_DEPARTURES[2], updatedThird.getArrival().getTime());
-            assertEquals(DST_DEPARTURES[2], updatedThird.getDeparture().getTime() );
+            assertEquals(DST_DEPARTURES[2], updatedThird.getDeparture().getTime());
         }
         {
             // First departure to delay after second arrival so second arrival needs to be moved
@@ -170,15 +173,15 @@ public class GtfsRtValidatorTest {
 
             StopTimeUpdate updatedFirst = updated.get(0);
             assertEquals(DST_ARRIVALS[0], updatedFirst.getArrival().getTime());
-            assertEquals(newDeparturesSecs[0], updatedFirst.getDeparture().getTime() );
+            assertEquals(newDeparturesSecs[0], updatedFirst.getDeparture().getTime());
 
             StopTimeUpdate updatedSecond = updated.get(1);
             assertEquals(newDeparturesSecs[0], updatedSecond.getArrival().getTime());
-            assertEquals(newDeparturesSecs[1], updatedSecond.getDeparture().getTime() );
+            assertEquals(newDeparturesSecs[1], updatedSecond.getDeparture().getTime());
 
             StopTimeUpdate updatedThird = updated.get(2);
             assertEquals(DST_ARRIVALS[2], updatedThird.getArrival().getTime());
-            assertEquals(newDeparturesSecs[2], updatedThird.getDeparture().getTime() );
+            assertEquals(newDeparturesSecs[2], updatedThird.getDeparture().getTime());
         }
     }
 
@@ -207,9 +210,12 @@ public class GtfsRtValidatorTest {
         List<StopTimeUpdate> updates = new LinkedList<>();
         for (int stopSequence = 1; stopSequence < 100; stopSequence++) {
             //Let's switch types to make sure both work
-            InternalMessages.StopEstimate.Type type = stopSequence % 2 == 0 ? InternalMessages.StopEstimate.Type.ARRIVAL : InternalMessages.StopEstimate.Type.DEPARTURE;
+            InternalMessages.StopEstimate.Type type = stopSequence % 2 == 0
+                    ? InternalMessages.StopEstimate.Type.ARRIVAL
+                    : InternalMessages.StopEstimate.Type.DEPARTURE;
             long targetTime = startTime++; //Let's modify this a bit
-            InternalMessages.StopEstimate event = MockDataUtils.mockStopEstimate(DVI_ID, type, 0L, stopSequence, targetTime); //MockDataFactory.mockStopEvent(MockDataUtils.generateValidCommon(DVI_ID, stopSequence).build(), null, type);
+            InternalMessages.StopEstimate event = MockDataUtils.mockStopEstimate(DVI_ID, type, 0L, stopSequence,
+                    targetTime); //MockDataFactory.mockStopEvent(MockDataUtils.generateValidCommon(DVI_ID, stopSequence).build(), null, type);
             StopTimeUpdate update = GtfsRtFactory.newStopTimeUpdate(event);
             updates.add(update);
         }
@@ -235,8 +241,7 @@ public class GtfsRtValidatorTest {
             assertTrue(update.hasArrival() | update.hasDeparture());
             if (update.hasArrival()) {
                 assertTrue(update.getArrival().hasTime());
-            }
-            else if (update.hasDeparture()) {
+            } else if (update.hasDeparture()) {
                 assertTrue(update.getDeparture().hasTime());
             }
         });
@@ -264,8 +269,8 @@ public class GtfsRtValidatorTest {
 
         LinkedList<StopTimeUpdate> onlyDepartures = new LinkedList<>();
         for (int n = 0; n < SRC_DEPARTURES_MS.length; n++) {
-            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory.mockStopTimeUpdate(
-                    InternalMessages.StopEstimate.Type.DEPARTURE, SRC_DEPARTURES_MS[n]);
+            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory
+                    .mockStopTimeUpdate(InternalMessages.StopEstimate.Type.DEPARTURE, SRC_DEPARTURES_MS[n]);
             onlyDepartures.add(update);
         }
         List<StopTimeUpdate> filledArrivals = GtfsRtValidator.fillMissingArrivalsAndDepartures(onlyDepartures);
@@ -273,8 +278,8 @@ public class GtfsRtValidatorTest {
 
         LinkedList<StopTimeUpdate> onlyArrivals = new LinkedList<>();
         for (int n = 0; n < SRC_ARRIVALS_MS.length; n++) {
-            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory.mockStopTimeUpdate(
-                    InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[n]);
+            final GtfsRealtime.TripUpdate.StopTimeUpdate update = MockDataFactory
+                    .mockStopTimeUpdate(InternalMessages.StopEstimate.Type.ARRIVAL, SRC_ARRIVALS_MS[n]);
             onlyArrivals.add(update);
         }
         List<StopTimeUpdate> filledDepartures = GtfsRtValidator.fillMissingArrivalsAndDepartures(onlyArrivals);
@@ -284,34 +289,25 @@ public class GtfsRtValidatorTest {
     @Test
     public void testRemoveEstimatesFromNoData() {
         List<StopTimeUpdate> stopTimeUpdates = Arrays.asList(
-                StopTimeUpdate.newBuilder()
-                        .setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA)
-                        .setArrival(StopTimeEvent.newBuilder()
-                                .setTime(0)
-                                .build())
-                        .setDeparture(StopTimeEvent.newBuilder()
-                                .setTime(0)
-                                .build())
-                        .build(),
-                StopTimeUpdate.newBuilder()
-                        .setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED)
-                        .setArrival(StopTimeEvent.newBuilder()
-                                .setTime(0)
-                                .build())
-                        .setDeparture(StopTimeEvent.newBuilder()
-                                .setTime(0)
-                                .build())
-                        .build());
+                StopTimeUpdate.newBuilder().setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA)
+                        .setArrival(StopTimeEvent.newBuilder().setTime(0).build())
+                        .setDeparture(StopTimeEvent.newBuilder().setTime(0).build()).build(),
+                StopTimeUpdate.newBuilder().setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.SCHEDULED)
+                        .setArrival(StopTimeEvent.newBuilder().setTime(0).build())
+                        .setDeparture(StopTimeEvent.newBuilder().setTime(0).build()).build());
 
         List<StopTimeUpdate> fixed = GtfsRtValidator.removeEstimatesFromNoDataUpdates(stopTimeUpdates);
 
-        Optional<StopTimeUpdate> noData = fixed.stream().filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.NO_DATA).findAny();
+        Optional<StopTimeUpdate> noData = fixed.stream()
+                .filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.NO_DATA).findAny();
 
         assertTrue(noData.isPresent());
         assertFalse(noData.get().hasArrival());
         assertFalse(noData.get().hasDeparture());
 
-        Optional<StopTimeUpdate> scheduled = fixed.stream().filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.SCHEDULED).findAny();
+        Optional<StopTimeUpdate> scheduled = fixed.stream()
+                .filter(stu -> stu.getScheduleRelationship() == StopTimeUpdate.ScheduleRelationship.SCHEDULED)
+                .findAny();
 
         assertTrue(scheduled.isPresent());
         assertTrue(scheduled.get().hasArrival());

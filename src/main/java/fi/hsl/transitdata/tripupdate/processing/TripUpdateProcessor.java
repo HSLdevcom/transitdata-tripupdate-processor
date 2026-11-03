@@ -36,24 +36,16 @@ public class TripUpdateProcessor {
     private final Cache<String, Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>>> cancellationsCache;
 
     public TripUpdateProcessor(Producer<byte[]> producer) {
-        this.tripUpdateCache = Caffeine.newBuilder()
-                .expireAfterAccess(CACHE_DURATION)
-                .build();
+        this.tripUpdateCache = Caffeine.newBuilder().expireAfterAccess(CACHE_DURATION).build();
 
-        this.stopTimeUpdateCache = Caffeine.newBuilder()
-                .expireAfterAccess(CACHE_DURATION)
-                .build(key -> {
-                    //TreeMap keeps its entries sorted according to the natural ordering of its keys.
-                    return new TreeMap<>();
-                });
+        this.stopTimeUpdateCache = Caffeine.newBuilder().expireAfterAccess(CACHE_DURATION).build(key -> {
+            //TreeMap keeps its entries sorted according to the natural ordering of its keys.
+            return new TreeMap<>();
+        });
 
-        this.scheduleRelationshipCache = Caffeine.newBuilder()
-                .expireAfterWrite(CACHE_DURATION)
-                .build();
+        this.scheduleRelationshipCache = Caffeine.newBuilder().expireAfterWrite(CACHE_DURATION).build();
 
-        this.cancellationsCache = Caffeine.newBuilder()
-                .expireAfterAccess(CACHE_DURATION)
-                .build(key -> new HashMap<>());
+        this.cancellationsCache = Caffeine.newBuilder().expireAfterAccess(CACHE_DURATION).build(key -> new HashMap<>());
     }
 
     public Optional<TripUpdate> processStopEstimate(InternalMessages.StopEstimate stopEstimate) {
@@ -73,8 +65,7 @@ public class TripUpdateProcessor {
 
                 //We want to act only if the status is still scheduled, let's not send estimates on cancelled trips.
                 return Optional.of(tripUpdate);
-            }
-            else {
+            } else {
                 log.debug("Discarding cancelled stop estimate");
                 return Optional.empty();
             }
@@ -86,7 +77,8 @@ public class TripUpdateProcessor {
 
     }
 
-    public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp, InternalMessages.TripCancellation tripCancellation) {
+    public TripUpdate processTripCancellation(final String messageKey, long messageTimestamp,
+            InternalMessages.TripCancellation tripCancellation) {
         return updateTripUpdateCacheWithCancellation(messageKey, messageTimestamp, tripCancellation);
     }
 
@@ -122,7 +114,8 @@ public class TripUpdateProcessor {
         return new LinkedList<>(updates);
     }
 
-    private TripUpdate updateTripUpdateCacheWithStopTimes(final InternalMessages.StopEstimate latest, Collection<StopTimeUpdate> stopTimeUpdates) {
+    private TripUpdate updateTripUpdateCacheWithStopTimes(final InternalMessages.StopEstimate latest,
+            Collection<StopTimeUpdate> stopTimeUpdates) {
         final String tuCacheKey = cacheKey(latest);
 
         TripUpdate previousTripUpdate = tripUpdateCache.getIfPresent(tuCacheKey);
@@ -131,40 +124,37 @@ public class TripUpdateProcessor {
         }
         final long timestamp = GtfsRtFactory.lastModified(latest);
 
-        TripUpdate tripUpdate = previousTripUpdate.toBuilder()
-                .clearStopTimeUpdate()
-                .addAllStopTimeUpdate(stopTimeUpdates)
-                .setTimestamp(timestamp)
-                .build();
-        
+        TripUpdate tripUpdate = previousTripUpdate.toBuilder().clearStopTimeUpdate()
+                .addAllStopTimeUpdate(stopTimeUpdates).setTimestamp(timestamp).build();
+
         if (StringUtils.isNotBlank(latest.getTargetedStopId())
                 && !latest.getTargetedStopId().equals(latest.getStopId())) {
             tripUpdate = processTargetedStopIds(tripUpdate, latest);
         }
-        
+
         tripUpdateCache.put(tuCacheKey, tripUpdate);
 
         return tripUpdate;
     }
-    
+
     private TripUpdate processTargetedStopIds(TripUpdate tripUpdate, InternalMessages.StopEstimate stopEstimate) {
-        log.info("TargetedStopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, Type={}, OperationDay={}, StartTime={}",
+        log.info(
+                "TargetedStopId has changed. TimetabledStopId={}, TargetedStopId={}, RouteId={}, DirectionId={}, Type={}, OperationDay={}, StartTime={}",
                 stopEstimate.getStopId(), stopEstimate.getTargetedStopId(), stopEstimate.getTripInfo().getRouteId(),
-                stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getType(), stopEstimate.getTripInfo().getOperatingDay(),
-                stopEstimate.getTripInfo().getStartTime());
-        
+                stopEstimate.getTripInfo().getDirectionId(), stopEstimate.getType(),
+                stopEstimate.getTripInfo().getOperatingDay(), stopEstimate.getTripInfo().getStartTime());
+
         StopTimeProperties stopTimeProperties = GtfsRealtime.TripUpdate.StopTimeProperties.newBuilder()
-                .setAssignedStopId(stopEstimate.getTargetedStopId())
-                .build();
-        
+                .setAssignedStopId(stopEstimate.getTargetedStopId()).build();
+
         StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
                 .setStopSequence(stopEstimate.getStopSequence())
                 .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED)
                 .setStopTimeProperties(stopTimeProperties);
-        
+
         int stopTimeUpdateToBeRemovedIndex = -1;
-        
-        for (int i=0; i<tripUpdate.getStopTimeUpdateList().size(); i++) {
+
+        for (int i = 0; i < tripUpdate.getStopTimeUpdateList().size(); i++) {
             if (stopEstimate.getStopId().equals(tripUpdate.getStopTimeUpdateList().get(i).getStopId())) {
                 stopTimeUpdateToBeRemovedIndex = i;
                 StopTimeEvent arrival = tripUpdate.getStopTimeUpdateList().get(i).getArrival();
@@ -173,40 +163,44 @@ public class TripUpdateProcessor {
                 break;
             }
         }
-        
+
         if (stopTimeUpdateToBeRemovedIndex < 0) {
             log.warn("No stop time update to be removed index found for stopId {}", stopEstimate.getStopId());
         }
-        
-        log.info("TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}. Index: {}. Sequence: {}",
+
+        log.info(
+                "TargetStopId has changed. Remove stop time update with stopId {}. Add stop time update with assignedStopId {}. Index: {}. Sequence: {}",
                 stopEstimate.getStopId(), stopTimeUpdate.getStopTimeProperties().getAssignedStopId(),
                 stopTimeUpdateToBeRemovedIndex, stopEstimate.getStopSequence());
-        
-        return tripUpdate.toBuilder()
-                .setStopTimeUpdate(stopTimeUpdateToBeRemovedIndex, stopTimeUpdate)
-                .build();
+
+        return tripUpdate.toBuilder().setStopTimeUpdate(stopTimeUpdateToBeRemovedIndex, stopTimeUpdate).build();
     }
-    
-    private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey,
-                                                             final long messageTimestampMs,
-                                                             InternalMessages.TripCancellation cancellation) {
-        cancellationsCache.get(cacheKey, k -> new HashMap<>()).compute(cancellation.getDeviationCaseId(), (deviationCaseId, tripCancellations) -> {
-            if (tripCancellations == null) {
-                tripCancellations = new HashMap<>();
-            }
 
-            tripCancellations.put(cancellation.getStatus(), cancellation);
+    private TripUpdate updateTripUpdateCacheWithCancellation(final String cacheKey, final long messageTimestampMs,
+            InternalMessages.TripCancellation cancellation) {
+        cancellationsCache.get(cacheKey, k -> new HashMap<>()).compute(cancellation.getDeviationCaseId(),
+                (deviationCaseId, tripCancellations) -> {
+                    if (tripCancellations == null) {
+                        tripCancellations = new HashMap<>();
+                    }
 
-            return tripCancellations;
-        });
-        final Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> cancellations = cancellationsCache.getIfPresent(cacheKey);
-        
-        boolean isCancelled = cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED ? true : false;
-        
+                    tripCancellations.put(cancellation.getStatus(), cancellation);
+
+                    return tripCancellations;
+                });
+        final Map<Long, Map<InternalMessages.TripCancellation.Status, InternalMessages.TripCancellation>> cancellations = cancellationsCache
+                .getIfPresent(cacheKey);
+
+        boolean isCancelled = cancellation.getStatus() == InternalMessages.TripCancellation.Status.CANCELED
+                ? true
+                : false;
+
         if (cancellation.getDeviationCaseId() > 0) {
             isCancelled = cancellations.values().stream().anyMatch(cancellationsForDeviationCase -> {
                 final Set<InternalMessages.TripCancellation.Status> statuses = cancellationsForDeviationCase.keySet();
-                return statuses.stream().filter(status -> status == InternalMessages.TripCancellation.Status.CANCELED).count() > statuses.stream().filter(status -> status != InternalMessages.TripCancellation.Status.CANCELED).count();
+                return statuses.stream().filter(status -> status == InternalMessages.TripCancellation.Status.CANCELED)
+                        .count() > statuses.stream()
+                                .filter(status -> status != InternalMessages.TripCancellation.Status.CANCELED).count();
             });
         }
 
@@ -216,19 +210,20 @@ public class TripUpdateProcessor {
         }
 
         //Assume that trip is scheduled if its schedule relationship is not found from the cache
-        final GtfsRealtime.TripDescriptor.ScheduleRelationship status = isCancelled ? GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED : Optional.ofNullable(scheduleRelationshipCache.getIfPresent(cacheKey)).orElse(TripDescriptor.ScheduleRelationship.SCHEDULED);
+        final GtfsRealtime.TripDescriptor.ScheduleRelationship status = isCancelled
+                ? GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED
+                : Optional.ofNullable(scheduleRelationshipCache.getIfPresent(cacheKey))
+                        .orElse(TripDescriptor.ScheduleRelationship.SCHEDULED);
 
-        TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder()
-                .setScheduleRelationship(status)
+        TripDescriptor tripDescriptor = previousTripUpdate.getTrip().toBuilder().setScheduleRelationship(status)
                 .build();
 
-        TripUpdate.Builder builder = previousTripUpdate.toBuilder()
-                .setTrip(tripDescriptor)
+        TripUpdate.Builder builder = previousTripUpdate.toBuilder().setTrip(tripDescriptor)
                 .setTimestamp(TimeUnit.SECONDS.convert(messageTimestampMs, TimeUnit.MILLISECONDS))
                 .clearStopTimeUpdate();
 
-
-        if (status == TripDescriptor.ScheduleRelationship.SCHEDULED || status == TripDescriptor.ScheduleRelationship.ADDED) {
+        if (status == TripDescriptor.ScheduleRelationship.SCHEDULED
+                || status == TripDescriptor.ScheduleRelationship.ADDED) {
             // We need to re-attach all the StopTimeUpdates to the payload
 
             List<StopTimeUpdate> stopTimeUpdates = getStopTimeUpdates(cacheKey);
@@ -237,7 +232,8 @@ public class TripUpdateProcessor {
             if (validated.isEmpty()) {
                 // This is probably cancellation of cancellation (CANCELED -> SCHEDULED/ADDED) as no stop time updates were available
                 // Gtfs-rt standard requires SCHEDULED (OR ADDED) trip update to contain at least one stop time update, thus let's add one
-                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+                GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate
+                        .newBuilder();
                 stopTimeUpdateBuilder.setStopSequence(1);
                 stopTimeUpdateBuilder.setScheduleRelationship(StopTimeUpdate.ScheduleRelationship.NO_DATA);
                 builder.addStopTimeUpdate(stopTimeUpdateBuilder.build());

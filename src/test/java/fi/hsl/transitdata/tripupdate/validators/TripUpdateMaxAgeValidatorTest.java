@@ -36,7 +36,8 @@ public class TripUpdateMaxAgeValidatorTest {
         //2018-11-07T17:30:00 in Helsinki/Europe
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("B", 0, 1541604600));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00",
+                stopTimeUpdates);
 
         //Validate with 2018-11-07T19:31:00
         assertEquals(false, validator.validateWithCurrentTime(tripUpdate, 1541611860));
@@ -55,7 +56,8 @@ public class TripUpdateMaxAgeValidatorTest {
         //2018-11-07T17:30:00 in Helsinki/Europe
         stopTimeUpdates.add(MockDataFactory.mockStopTimeUpdate("B", 0, 1541604600));
 
-        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00", stopTimeUpdates);
+        GtfsRealtime.TripUpdate tripUpdate = MockDataFactory.mockTripUpdate("1010", 0, "20181107", "17:14:00",
+                stopTimeUpdates);
 
         //Validate with 2018-11-07T19:31:00
         assertEquals(true, validator.validateWithCurrentTime(tripUpdate, 1541611740));

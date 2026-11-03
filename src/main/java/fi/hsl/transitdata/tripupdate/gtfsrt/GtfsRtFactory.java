@@ -18,8 +18,7 @@ public class GtfsRtFactory {
     }
 
     public static GtfsRealtime.TripUpdate.StopTimeUpdate newStopTimeUpdateFromPrevious(
-            final InternalMessages.StopEstimate stopEstimate,
-            GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
+            final InternalMessages.StopEstimate stopEstimate, GtfsRealtime.TripUpdate.StopTimeUpdate previousUpdate) {
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdateBuilder = null;
         if (previousUpdate != null) {
@@ -27,23 +26,26 @@ public class GtfsRtFactory {
         } else {
             String stopId = stopEstimate.getStopId();
             int stopSequence = stopEstimate.getStopSequence();
-            stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId(stopId)
+            stopTimeUpdateBuilder = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopId(stopId)
                     .setStopSequence(stopSequence);
         }
 
         switch (stopEstimate.getStatus()) {
-            case SKIPPED:
-                stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
+            case SKIPPED :
+                stopTimeUpdateBuilder
+                        .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED);
                 break;
-            case SCHEDULED:
-                stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED);
+            case SCHEDULED :
+                stopTimeUpdateBuilder
+                        .setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED);
                 break;
-            case NO_DATA:
+            case NO_DATA :
                 //If there is no data for current or previous stop time update, set ScheduleRelationship to NO_DATA
-                if (previousUpdate == null || previousUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA) {
-                    stopTimeUpdateBuilder.setScheduleRelationship(GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA);
-                //Otherwise use ScheduleRelationship of previous stop time update
+                if (previousUpdate == null || previousUpdate
+                        .getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA) {
+                    stopTimeUpdateBuilder.setScheduleRelationship(
+                            GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA);
+                    //Otherwise use ScheduleRelationship of previous stop time update
                 } else {
                     stopTimeUpdateBuilder.setScheduleRelationship(previousUpdate.getScheduleRelationship());
                 }
@@ -54,8 +56,8 @@ public class GtfsRtFactory {
             // GTFS-RT treats times in seconds
             long stopEventTimeInSeconds = stopEstimate.getEstimatedTimeUtcMs() / 1000;
 
-            GtfsRealtime.TripUpdate.StopTimeEvent.Builder stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
-                    .setTime(stopEventTimeInSeconds);
+            GtfsRealtime.TripUpdate.StopTimeEvent.Builder stopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent
+                    .newBuilder().setTime(stopEventTimeInSeconds);
 
             //Whether the event was observed in real world (i.e. not an estimate)
             final boolean observedTime = stopEstimate.hasObservedTime() && stopEstimate.getObservedTime();
@@ -64,10 +66,10 @@ public class GtfsRtFactory {
             }
 
             switch (stopEstimate.getType()) {
-                case ARRIVAL:
+                case ARRIVAL :
                     stopTimeUpdateBuilder.setArrival(stopTimeEvent);
                     break;
-                case DEPARTURE:
+                case DEPARTURE :
                     stopTimeUpdateBuilder.setDeparture(stopTimeEvent);
                     break;
             }
@@ -83,54 +85,50 @@ public class GtfsRtFactory {
     public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.StopEstimate estimate) {
         final int direction = PubtransFactory.joreDirectionToGtfsDirection(estimate.getTripInfo().getDirectionId());
         String routeId = RouteIdUtils.normalizeRouteId(estimate.getTripInfo().getRouteId());
-        
-        GtfsRealtime.TripDescriptor.ScheduleRelationship scheduleType = mapInternalScheduleTypeToGtfsRt(estimate.getTripInfo().getScheduleType());
-        
+
+        GtfsRealtime.TripDescriptor.ScheduleRelationship scheduleType = mapInternalScheduleTypeToGtfsRt(
+                estimate.getTripInfo().getScheduleType());
+
         GtfsRealtime.TripDescriptor.Builder tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(routeId)
-                .setDirectionId(direction)
-                .setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
+                .setRouteId(routeId).setDirectionId(direction).setStartDate(estimate.getTripInfo().getOperatingDay()) // Local date as String
                 .setStartTime(estimate.getTripInfo().getStartTime()) // Local time as String
                 .setScheduleRelationship(scheduleType);
-        
+
         //Trips outside of static schedule need trip ID to be accepted by OTP
         if (scheduleType != GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED) {
             tripDescriptor.setTripId(generateTripId(estimate.getTripInfo()));
         }
 
-        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(tripDescriptor)
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder().setTrip(tripDescriptor)
                 .setTimestamp(lastModified(estimate));
 
         return tripUpdateBuilder.build();
     }
 
-    private static GtfsRealtime.TripDescriptor.ScheduleRelationship mapInternalScheduleTypeToGtfsRt(InternalMessages.TripInfo.ScheduleType scheduleType) {
+    private static GtfsRealtime.TripDescriptor.ScheduleRelationship mapInternalScheduleTypeToGtfsRt(
+            InternalMessages.TripInfo.ScheduleType scheduleType) {
         switch (scheduleType) {
-            case ADDED:
+            case ADDED :
                 return GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED;
-            case UNSCHEDULED:
+            case UNSCHEDULED :
                 return GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED;
-            case SCHEDULED:
-            default:
+            case SCHEDULED :
+            default :
                 return GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
         }
     }
 
-    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation, long timestampMs) {
+    public static GtfsRealtime.TripUpdate newTripUpdate(InternalMessages.TripCancellation cancellation,
+            long timestampMs) {
         final int gtfsRtDirection = PubtransFactory.joreDirectionToGtfsDirection(cancellation.getDirectionId());
         String routeId = RouteIdUtils.normalizeRouteId(cancellation.getRouteId());
 
-        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder()
-                .setRouteId(routeId)
-                .setDirectionId(gtfsRtDirection)
-                .setStartDate(cancellation.getStartDate())
+        GtfsRealtime.TripDescriptor tripDescriptor = GtfsRealtime.TripDescriptor.newBuilder().setRouteId(routeId)
+                .setDirectionId(gtfsRtDirection).setStartDate(cancellation.getStartDate())
                 .setStartTime(cancellation.getStartTime())
-                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
-                .build();
+                .setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED).build();
 
-        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(tripDescriptor)
+        GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = GtfsRealtime.TripUpdate.newBuilder().setTrip(tripDescriptor)
                 .setTimestamp(timestampMs / 1000);
 
         return tripUpdateBuilder.build();
@@ -142,6 +140,7 @@ public class GtfsRtFactory {
      * @return Trip ID
      */
     private static String generateTripId(InternalMessages.TripInfo tripInfo) {
-        return tripInfo.getRouteId()+"_"+tripInfo.getOperatingDay()+"_"+tripInfo.getStartTime()+"_"+tripInfo.getDirectionId();
+        return tripInfo.getRouteId() + "_" + tripInfo.getOperatingDay() + "_" + tripInfo.getStartTime() + "_"
+                + tripInfo.getDirectionId();
     }
 }
