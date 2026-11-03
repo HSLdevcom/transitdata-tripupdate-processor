@@ -3,6 +3,7 @@ package fi.hsl.transitdata.tripupdate.application;
 import com.google.transit.realtime.GtfsRealtime;
 import com.typesafe.config.Config;
 import fi.hsl.common.gtfsrt.FeedMessageFactory;
+import fi.hsl.common.metrics.PipelineMetrics;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -28,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MessageRouter implements IMessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
+
+    private static final String PIPELINE = "tripupdate";
 
     private Map<ProtobufSchema, AbstractMessageProcessor> processors = new HashMap<>();
     private List<ITripUpdateValidator> tripUpdateValidators;
@@ -159,6 +162,10 @@ public class MessageRouter implements IMessageHandler {
                     .thenRun(() -> log.debug("Sending TripUpdate for tripId {} with {} StopTimeUpdates and status {}",
                             tripId, tripUpdate.getStopTimeUpdateCount(),
                             tripUpdate.getTrip().getScheduleRelationship()));
+
+            if (pulsarEventTimestamp > 0) {
+                PipelineMetrics.observeLatency(PIPELINE, (System.currentTimeMillis() - pulsarEventTimestamp) / 1000.0);
+            }
         });
     }
 }
