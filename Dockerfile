@@ -26,4 +26,4 @@ RUN --mount=type=secret,id=github_token \
 # ============================
 FROM hsldevcom/infodevops-docker-base-images:1.0.2-25-java-jre
 COPY --from=build /usr/app/target/transitdata-tripupdate-processor-jar-with-dependencies.jar /usr/app/transitdata-tripupdate-processor.jar
-ENTRYPOINT ["java", "-XX:InitialRAMPercentage=10.0", "-XX:MaxRAMPercentage=95.0", "-jar", "/usr/app/transitdata-tripupdate-processor.jar"]
+ENTRYPOINT ["java", "-XX:InitialRAMPercentage=10.0", "-XX:MaxRAMPercentage=75.0", "-jar", "/usr/app/transitdata-tripupdate-processor.jar"]
