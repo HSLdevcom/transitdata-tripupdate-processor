@@ -115,7 +115,7 @@ public class MessageRouter implements IMessageHandler {
 
                             if (tripUpdateIsValid) {
                                 long eventTimeMs = received.getEventTime();
-                                sendTripUpdate(pair, eventTimeMs);
+                                sendTripUpdate(pair, eventTimeMs, received);
                             }
                         } else {
                             log.warn("Failed to process TripUpdate from source schema {}", schema.schema.toString());
@@ -146,7 +146,7 @@ public class MessageRouter implements IMessageHandler {
     }
 
     private void sendTripUpdate(final AbstractMessageProcessor.TripUpdateWithId tuIdPair,
-            final long pulsarEventTimestamp) {
+            final long pulsarEventTimestamp, final Message received) {
         messageStats.incrementMessagesSent();
 
         final String tripId = tuIdPair.getTripId();
@@ -163,9 +163,7 @@ public class MessageRouter implements IMessageHandler {
                             tripId, tripUpdate.getStopTimeUpdateCount(),
                             tripUpdate.getTrip().getScheduleRelationship()));
 
-            if (pulsarEventTimestamp > 0) {
-                PipelineMetrics.observeLatency(PIPELINE, (System.currentTimeMillis() - pulsarEventTimestamp) / 1000.0);
-            }
+            PipelineMetrics.observeLatencyFromSource(PIPELINE, received);
         });
     }
 }
