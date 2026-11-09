@@ -17,7 +17,7 @@
         <maven.compiler.release>25</maven.compiler.release>
         <common.version>3.2.0</common.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <spotlessMavenPlugin.version>3.10.3</spotlessMavenPlugin.version>
+        <spotlessMavenPlugin.version>3.10.4</spotlessMavenPlugin.version>
     </properties>
     <profiles>
         <!-- The Configuration of the unit-test profile -->
